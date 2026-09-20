@@ -1,10 +1,9 @@
 /**
  * Client Script Tampilan Layar Proyektor / TV Panggung
- * Menampilkan animasi pemenang tercepat, runner-up, sound FX panggung, dan QR Code
+ * Menampilkan animasi pemenang tercepat, runner-up, sound FX panggung, dan QR Code via Socket.IO
  */
 
-let centrifuge = null;
-let currentSubscription = null;
+let socket = null;
 let projectorState = {
   status: 'LOCKED',
   buzzList: [],
@@ -33,73 +32,49 @@ const projJoinUrl = document.getElementById('proj-join-url');
 const roundNumber = document.getElementById('round-number');
 const timerBarWrap = document.getElementById('timer-bar-wrap');
 const timerBarFill = document.getElementById('timer-bar-fill');
-const btnFullscreen = document.getElementById('btn-fullscreen');
-const btnSoundToggle = document.getElementById('btn-sound-toggle');
-
-// Inisialisasi Audio Context pada klik pertama di proyektor
+// Inisialisasi Audio Context pada interaksi pertama di proyektor
 let soundEnabled = false;
 function enableAudio() {
   if (!soundEnabled) {
     window.soundEngine.init();
     soundEnabled = true;
-    btnSoundToggle.textContent = 'Audio Aktif';
-    btnSoundToggle.style.color = '#86efac';
   }
 }
 document.addEventListener('click', enableAudio, { once: true });
-btnSoundToggle.addEventListener('click', () => {
-  enableAudio();
-  window.soundEngine.playCorrect();
-});
+document.addEventListener('keydown', enableAudio, { once: true });
+document.addEventListener('touchstart', enableAudio, { once: true });
 
-// Fullscreen Toggle
-btnFullscreen.addEventListener('click', () => {
+// Toggle Fullscreen dengan double-click di mana saja pada layar proyektor
+document.addEventListener('dblclick', () => {
   if (!document.fullscreenElement) {
     document.documentElement.requestFullscreen().catch(() => {});
-    btnFullscreen.textContent = 'Keluar Layar Penuh';
   } else {
     document.exitFullscreen().catch(() => {});
-    btnFullscreen.textContent = 'Layar Penuh';
   }
 });
 
-// 1. Inisialisasi Centrifugo (Mendukung Cloudflare Tunnel HTTPS/WSS dan Lokal)
-async function initCentrifugo() {
-  let wsUrl = '';
-  try {
-    const res = await fetch('/api/info');
-    const data = await res.json();
-    if (data.qrCodeDataUrl) projQrImg.src = data.qrCodeDataUrl;
-    if (data.joinUrl) projJoinUrl.textContent = data.joinUrl;
-    if (data.state) {
-      projectorState = data.state;
-      renderProjector();
-    }
-    if (data.centrifugoWsUrl) {
-      wsUrl = data.centrifugoWsUrl;
-    }
-  } catch (err) {
-    console.error('Gagal mengambil info:', err);
-  }
+// 1. Inisialisasi Socket.IO
+function initSocket() {
+  socket = io();
 
-  if (!wsUrl) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    wsUrl = `${protocol}//${window.location.host}/connection/websocket`;
-  }
-
-  centrifuge = new Centrifuge(wsUrl);
-
-  centrifuge.on('connected', () => {
+  socket.on('connect', () => {
     fetchInfo();
   });
 
-  currentSubscription = centrifuge.newSubscription('buzzer:events');
-  currentSubscription.on('publication', (ctx) => {
-    handleProjectorEvent(ctx.data);
+  socket.on('disconnect', () => {
+    projectorStatus.className = 'projector-status-box status-box-locked';
+    projectorStatus.textContent = 'TERPUTUS';
   });
 
-  currentSubscription.subscribe();
-  centrifuge.connect();
+  socket.on('connect_error', () => {
+    projectorStatus.className = 'projector-status-box status-box-locked';
+    projectorStatus.textContent = 'MENGHUBUNGKAN...';
+  });
+
+  // Menerima siaran event real-time dari server
+  socket.on('buzzer:event', (event) => {
+    handleProjectorEvent(event);
+  });
 }
 
 // 2. Ambil Info Server (IP, QR Code, dan State)
@@ -128,29 +103,39 @@ function handleProjectorEvent(event) {
 
   switch (event.type) {
     case 'STATE_UPDATE':
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        if (timerBarWrap) timerBarWrap.style.display = 'none';
+      }
       projectorState = event.state;
       renderProjector();
-      if (event.soundTrigger === 'unlock') window.soundEngine.playUnlock();
-      else if (event.soundTrigger === 'reset') window.soundEngine.playReset();
+      if (event.soundTrigger === 'unlock') {
+        window.soundEngine.playUnlock();
+        showFeedbackFlash('BEL DIBUKA (START)', '#10b981');
+      } else if (event.soundTrigger === 'reset') {
+        window.soundEngine.playReset();
+        showFeedbackFlash('ANTREAN DI-RESET', '#f59e0b');
+      }
       break;
 
     case 'BUZZ':
       projectorState.buzzList = event.buzzList;
       projectorState.status = event.status;
       renderProjector();
-      // Mainkan suara TRUTH untuk pemencet bel pertama
-      if (event.buzz.rank === 1) {
-        window.soundEngine.playTruth();
+      // Mainkan suara BUZZER saat peserta memencet bel pertama
+      if (event.buzz && event.buzz.rank === 1) {
+        window.soundEngine.playBuzzer();
       }
       break;
 
     case 'PLAY_SOUND':
       if (event.sound === 'truth' || event.sound === 'correct') {
         window.soundEngine.playTruth();
-        showFeedbackFlash('TRUTH (BENAR)', '#16a34a');
+        showFeedbackFlash('TRUTH (BENAR)', '#10b981');
       } else if (event.sound === 'lie' || event.sound === 'wrong') {
         window.soundEngine.playLie();
-        showFeedbackFlash('LIE (SALAH)', '#dc2626');
+        showFeedbackFlash('LIE (SALAH)', '#f43f5e');
       } else if (event.sound === 'buzzer') {
         window.soundEngine.playBuzzer();
       }
@@ -168,22 +153,6 @@ function renderProjector() {
   const list = projectorState.buzzList || [];
   roundNumber.textContent = projectorState.round || 1;
 
-  if (btnProjStart && btnProjReset) {
-    if (status === 'ACTIVE') {
-      btnProjStart.style.opacity = '0.7';
-      btnProjStart.innerHTML = '<span>BEL TERBUKA</span> <kbd>Spasi</kbd>';
-      btnProjReset.style.animation = 'none';
-    } else if (status === 'BUZZED') {
-      btnProjStart.style.opacity = '1';
-      btnProjStart.innerHTML = '<span>BUKA (START)</span> <kbd>Spasi</kbd>';
-      btnProjReset.style.animation = 'none';
-    } else {
-      btnProjStart.style.opacity = '1';
-      btnProjStart.innerHTML = '<span>BUKA (START)</span> <kbd>Spasi</kbd>';
-      btnProjReset.style.animation = 'none';
-    }
-  }
-
   if (status === 'ACTIVE') {
     // Bel Terbuka / Siap Berebut
     projectorStatus.className = 'projector-status-box status-box-active';
@@ -191,7 +160,7 @@ function renderProjector() {
 
     standbyView.style.display = 'flex';
     standbyTitle.textContent = 'SIAPKAN JARI ANDA DI ATAS BEL';
-    standbyTitle.style.color = '#86efac';
+    standbyTitle.style.color = '#059669';
     standbySub.textContent = 'Bel sudah terbuka. Peserta tercepat mendapat giliran menjawab.';
 
     winnerView.style.display = 'none';
@@ -202,7 +171,7 @@ function renderProjector() {
 
     standbyView.style.display = 'flex';
     standbyTitle.textContent = 'MENUNGGU ABA-ABA JURI';
-    standbyTitle.style.color = '#fff';
+    standbyTitle.style.color = '#1e3a8a';
     standbySub.textContent = 'Juri akan membuka bel setelah selesai membacakan pertanyaan.';
 
     winnerView.style.display = 'none';
@@ -259,27 +228,23 @@ function startTimer(seconds) {
   timerBarFill.style.width = '0%';
 
   let remaining = seconds;
-  window.soundEngine.playTick();
+  window.soundEngine.playTick(remaining <= 2);
 
   timerInterval = setInterval(() => {
     remaining -= 1;
     if (remaining > 0) {
-      window.soundEngine.playTick();
+      window.soundEngine.playTick(remaining <= 2);
     } else {
       clearInterval(timerInterval);
-      window.soundEngine.playWrong();
+      timerInterval = null;
+      window.soundEngine.playLie();
+      showFeedbackFlash('⏱ WAKTU HABIS!', '#ef4444');
       setTimeout(() => {
         timerBarWrap.style.display = 'none';
-      }, 1000);
+      }, 1200);
     }
   }, 1000);
 }
-
-// 6. Kontrol Host dari Halaman Proyektor (Start, Reset, Lock)
-const btnProjStart = document.getElementById('btn-proj-start');
-const btnProjReset = document.getElementById('btn-proj-reset');
-const btnProjLock = document.getElementById('btn-proj-lock');
-const btnProjLie = document.getElementById('btn-proj-lie');
 
 // Visual Flash Notification di Layar Proyektor
 function showFeedbackFlash(text, color) {
@@ -292,16 +257,16 @@ function showFeedbackFlash(text, color) {
     flashEl.style.left = '50%';
     flashEl.style.transform = 'translate(-50%, -50%)';
     flashEl.style.zIndex = '9999';
-    flashEl.style.padding = '1.25rem 2.5rem';
-    flashEl.style.borderRadius = '12px';
-    flashEl.style.fontFamily = 'var(--font-display)';
-    flashEl.style.fontSize = '2.25rem';
-    flashEl.style.fontWeight = '700';
-    flashEl.style.letterSpacing = '0.02em';
+    flashEl.style.padding = '1.2rem 3rem';
+    flashEl.style.borderRadius = 'var(--radius-full)';
+    flashEl.style.fontFamily = 'var(--font-title)';
+    flashEl.style.fontSize = '2.5rem';
+    flashEl.style.fontWeight = '900';
+    flashEl.style.letterSpacing = '0.04em';
     flashEl.style.color = '#fff';
-    flashEl.style.boxShadow = '0 10px 30px rgba(0,0,0,0.6)';
+    flashEl.style.boxShadow = 'var(--shadow-gloss), 0 16px 40px rgba(30, 58, 138, 0.3)';
     flashEl.style.pointerEvents = 'none';
-    flashEl.style.transition = 'all 0.2s ease';
+    flashEl.style.transition = 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)';
     document.body.appendChild(flashEl);
   }
 
@@ -318,6 +283,18 @@ function showFeedbackFlash(text, color) {
 
 async function sendControl(action, payload = {}) {
   enableAudio();
+
+  if (socket && socket.connected) {
+    socket.emit('CONTROL', { action, payload }, (res) => {
+      if (res && res.state) {
+        projectorState = res.state;
+        renderProjector();
+      }
+    });
+    return;
+  }
+
+  // Fallback REST API
   try {
     const res = await fetch('/api/control', {
       method: 'POST',
@@ -334,16 +311,7 @@ async function sendControl(action, payload = {}) {
   }
 }
 
-if (btnProjStart) btnProjStart.addEventListener('click', () => sendControl('unlock'));
-if (btnProjReset) btnProjReset.addEventListener('click', () => sendControl('reset'));
-if (btnProjLock) btnProjLock.addEventListener('click', () => sendControl('lock'));
-if (btnProjLie) btnProjLie.addEventListener('click', () => {
-  enableAudio();
-  window.soundEngine.playLie();
-  sendControl('sound', { sound: 'lie' });
-});
-
-// Shortcut Keyboard untuk Layar Proyektor
+// Shortcut Keyboard untuk Layar Proyektor (Bisa dikontrol via keyboard tanpa tombol UI)
 window.addEventListener('keydown', (e) => {
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
 
@@ -353,34 +321,40 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'Enter') {
     e.preventDefault();
     sendControl('reset');
-  } else if (e.code === 'Escape') {
+  } else if (e.key === 'k' || e.key === 'K') {
     e.preventDefault();
     sendControl('lock');
   } else if (e.key === 'l' || e.key === 'L') {
     e.preventDefault();
     enableAudio();
-    window.soundEngine.playLie();
     sendControl('sound', { sound: 'lie' });
   } else if (e.key === 't' || e.key === 'T') {
     e.preventDefault();
     enableAudio();
-    window.soundEngine.playTruth();
     sendControl('sound', { sound: 'truth' });
-  } else if (e.key === 'b' || e.key === 'B') {
+  } else if (e.key === 'c' || e.key === 'C') {
     e.preventDefault();
     enableAudio();
-    window.soundEngine.playTruth();
-    sendControl('sound', { sound: 'truth' });
-  } else if (e.key === 's' || e.key === 'S') {
+    sendControl('timer', { seconds: 5 });
+  } else if (e.key === 'r' || e.key === 'R') {
     e.preventDefault();
-    enableAudio();
-    window.soundEngine.playLie();
-    sendControl('sound', { sound: 'lie' });
+    sendControl('reset-round');
+    showFeedbackFlash('RONDE DI-RESET KE 1', '#3b82f6');
   }
 });
 
-// Inisialisasi
-window.addEventListener('DOMContentLoaded', () => {
-  initCentrifugo();
-});
+// Listener Klik Indikator Ronde di Layar Proyektor
+const roundIndicatorEl = document.getElementById('round-indicator');
+if (roundIndicatorEl) {
+  roundIndicatorEl.addEventListener('click', () => {
+    sendControl('reset-round');
+    showFeedbackFlash('RONDE DI-RESET KE 1', '#3b82f6');
+  });
+}
 
+// Inisialisasi
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initSocket);
+} else {
+  initSocket();
+}

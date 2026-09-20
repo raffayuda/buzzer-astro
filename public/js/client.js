@@ -1,10 +1,9 @@
 /**
  * Client Script Sisi Peserta (User)
- * Menangani interaksi tombol buzzer, getaran HP, suara, dan koneksi Centrifugo
+ * Menangani interaksi tombol buzzer, getaran HP, suara, dan koneksi Socket.IO
  */
 
-let centrifuge = null;
-let currentSubscription = null;
+let socket = null;
 let participant = {
   id: null,
   name: '',
@@ -73,9 +72,6 @@ joinForm.addEventListener('submit', (e) => {
   const name = playerNameInput.value.trim();
   if (!name) return;
 
-  // Inisialisasi Audio Context setelah interaksi pengguna
-  window.soundEngine.init();
-
   participant.name = name;
   localStorage.setItem('buzzer_player_name', name);
   localStorage.setItem('buzzer_player_color', participant.color);
@@ -102,75 +98,32 @@ function showBuzzerScreen() {
   profileIndicator.style.color = participant.color;
 }
 
-// 4. Koneksi Centrifugo WebSocket (Mendukung Cloudflare Tunnel HTTPS/WSS dan Lokal)
-async function initCentrifugo() {
-  let wsUrl = '';
-  try {
-    const res = await fetch('/api/info');
-    const data = await res.json();
-    if (data.state) {
-      serverState = data.state;
-      updateUIState();
-    }
-    if (data.centrifugoWsUrl) {
-      wsUrl = data.centrifugoWsUrl;
-    }
-  } catch (err) {
-    console.error('Gagal mengambil info server:', err);
-  }
+// 4. Koneksi Socket.IO (Otomatis deteksi host, auto-reconnect, tanpa port terpisah)
+function initSocket() {
+  socket = io();
 
-  if (!wsUrl) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    wsUrl = `${protocol}//${window.location.host}/connection/websocket`;
-  }
-
-  centrifuge = new Centrifuge(wsUrl, {
-    minReconnectDelay: 1000,
-    maxReconnectDelay: 5000
-  });
-
-  centrifuge.on('connecting', () => {
-    connBadge.className = 'badge-pill status-locked';
-    connText.textContent = 'Menghubungkan...';
-  });
-
-  centrifuge.on('connected', () => {
+  socket.on('connect', () => {
     connBadge.className = 'badge-pill status-active';
     connText.textContent = 'Terhubung';
-    fetchInitialState();
   });
 
-  centrifuge.on('disconnected', () => {
+  socket.on('disconnect', () => {
     connBadge.className = 'badge-pill status-locked';
     connText.textContent = 'Terputus';
   });
 
-  // Subscribe ke channel event buzzer
-  currentSubscription = centrifuge.newSubscription('buzzer:events');
-
-  currentSubscription.on('publication', (ctx) => {
-    handleServerEvent(ctx.data);
+  socket.on('connect_error', () => {
+    connBadge.className = 'badge-pill status-locked';
+    connText.textContent = 'Menghubungkan...';
   });
 
-  currentSubscription.subscribe();
-  centrifuge.connect();
+  // Menerima siaran event real-time dari server
+  socket.on('buzzer:event', (event) => {
+    handleServerEvent(event);
+  });
 }
 
-// 5. Ambil status awal dari REST API
-async function fetchInitialState() {
-  try {
-    const res = await fetch('/api/info');
-    const data = await res.json();
-    if (data.state) {
-      serverState = data.state;
-      updateUIState();
-    }
-  } catch (err) {
-    console.error('Gagal mengambil status server:', err);
-  }
-}
-
-// 6. Tangani Event Real-time dari Centrifugo
+// 5. Tangani Event Real-time
 function handleServerEvent(event) {
   if (!event || !event.type) return;
 
@@ -179,19 +132,12 @@ function handleServerEvent(event) {
       serverState = event.state;
       hasBuzzedThisRound = false;
       updateUIState();
-      if (event.soundTrigger === 'unlock') {
-        window.soundEngine.playUnlock();
-      } else if (event.soundTrigger === 'reset') {
-        window.soundEngine.playReset();
-      }
       break;
 
     case 'BUZZ':
       serverState.buzzList = event.buzzList;
       serverState.status = event.status;
-      // Mainkan suara TRUTH untuk peserta yang memencet bel pertama
       if (event.buzz.rank === 1) {
-        window.soundEngine.playTruth();
         if (event.buzz.id !== participant.id && serverState.settings?.mode === 'first_only') {
           buzzerBtn.disabled = true;
           statusText.textContent = `Ditekan oleh: ${event.buzz.name}`;
@@ -200,15 +146,12 @@ function handleServerEvent(event) {
       break;
 
     case 'PLAY_SOUND':
-      if (event.sound === 'truth' || event.sound === 'correct') window.soundEngine.playTruth();
-      else if (event.sound === 'lie' || event.sound === 'wrong') window.soundEngine.playLie();
-      else if (event.sound === 'buzzer') window.soundEngine.playBuzzer();
-      else if (event.sound === 'tick') window.soundEngine.playTick();
+      // Suara dinonaktifkan di sisi peserta (hanya aktif di Host dan Proyektor)
       break;
   }
 }
 
-// 7. Perbarui Tampilan UI Berdasarkan Status Server
+// 6. Perbarui Tampilan UI Berdasarkan Status Server
 function updateUIState() {
   const status = serverState.status;
 
@@ -241,7 +184,7 @@ function updateUIState() {
   }
 }
 
-// 8. Event Menekan Tombol Buzzer
+// 7. Event Menekan Tombol Buzzer
 async function onBuzzerPress() {
   if (buzzerBtn.disabled || hasBuzzedThisRound) return;
 
@@ -249,36 +192,46 @@ async function onBuzzerPress() {
   buzzerBtn.classList.add('pressed');
   buzzerBtn.disabled = true;
 
-  // Haptic feedback / Getaran pada HP
+  // Haptic feedback / Getaran pada smartphone
   if ('vibrate' in navigator) {
     try {
       navigator.vibrate([150, 50, 150]);
     } catch (e) {}
   }
 
-  // Kirim ke server via REST API untuk timestamping resmi
+  const payload = {
+    id: participant.id,
+    name: participant.name,
+    color: participant.color
+  };
+
+  // Kirim via Socket.IO instan jika terhubung
+  if (socket && socket.connected) {
+    socket.emit('BUZZ', payload, (res) => {
+      if (res && res.success) {
+        displayResult(res.rank, res.deltaMs);
+      } else if (res) {
+        statusText.textContent = res.error || 'Gagal memencet bel';
+        if (res.rank) displayResult(res.rank, res.deltaMs);
+      }
+    });
+    return;
+  }
+
+  // Fallback REST API jika socket sedang reconnecting
   try {
     const res = await fetch('/api/buzz', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: participant.id,
-        name: participant.name,
-        color: participant.color
-      })
+      body: JSON.stringify(payload)
     });
 
     const data = await res.json();
     if (data.success) {
-      if (data.rank === 1) {
-        window.soundEngine.playTruth();
-      }
       displayResult(data.rank, data.deltaMs);
     } else {
       statusText.textContent = data.error || 'Gagal memencet bel';
-      if (data.rank) {
-        displayResult(data.rank, data.deltaMs);
-      }
+      if (data.rank) displayResult(data.rank, data.deltaMs);
     }
   } catch (err) {
     console.error('Error saat menekan bel:', err);
@@ -286,20 +239,20 @@ async function onBuzzerPress() {
   }
 }
 
-// 9. Tampilkan Hasil Peringkat di Layar Peserta
+// 8. Tampilkan Hasil Peringkat di Layar Peserta
 function displayResult(rank, deltaMs) {
   resultBox.style.display = 'flex';
   resultRank.textContent = `#${rank}`;
 
   if (rank === 1) {
     resultTitle.textContent = 'TERCEPAT (PERINGKAT #1)';
-    resultTitle.style.color = '#f59e0b';
+    resultTitle.style.color = '#d97706';
     resultDelta.textContent = 'Selisih: 0 ms (Pemenang Bel)';
     statusText.textContent = 'ANDA MEMENCET PALING CEPAT';
     statusText.className = 'game-status-text status-txt-active';
   } else {
     resultTitle.textContent = `URUTAN KE-${rank}`;
-    resultTitle.style.color = '#60a5fa';
+    resultTitle.style.color = '#1e3a8a';
     const deltaSec = (deltaMs / 1000).toFixed(3);
     resultDelta.textContent = `Selisih: +${deltaSec} detik (+${deltaMs} ms)`;
     statusText.textContent = `Urutan #${rank}`;
@@ -310,8 +263,13 @@ function displayResult(rank, deltaMs) {
 // Event Listeners Tombol Buzzer
 buzzerBtn.addEventListener('pointerdown', onBuzzerPress);
 
-// Inisialisasi saat halaman dimuat
-window.addEventListener('DOMContentLoaded', () => {
+function startClient() {
   initProfile();
-  initCentrifugo();
-});
+  initSocket();
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', startClient);
+} else {
+  startClient();
+}

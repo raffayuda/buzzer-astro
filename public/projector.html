@@ -3,14 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Layar Proyektor - Lomba Cerdas Cermat</title>
+  <title>Layar Proyektor - Lomba Cerdas Cermat | ASTRO 2026</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="projector-body">
+  <!-- Frutiger Aero Floating Bubbles Background -->
+  <div class="bubble-decor bubble-1"></div>
+  <div class="bubble-decor bubble-2"></div>
+  <div class="bubble-decor bubble-4"></div>
+
   <!-- Top Bar Layar Proyektor -->
   <header class="projector-header">
-    <div class="projector-title">
-      LOMBA CERDAS CERMAT
+    <div style="display: flex; align-items: center; gap: 0.9rem;">
+      <img src="https://astro-cdn.oktaa.my.id/logo.png" alt="Logo ASTRO" style="height: 46px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 8px rgba(30, 58, 138, 0.2));">
+      <div class="projector-title">
+        LOMBA CERDAS CERMAT
+      </div>
     </div>
     <div id="projector-status" class="projector-status-box status-box-locked">
       MENUNGGU SOAL
@@ -26,17 +34,18 @@
   <main class="projector-stage">
     <!-- Tampilan Standby -->
     <div id="standby-view" style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.25rem;">
-      <h1 id="standby-title" style="font-family: var(--font-display); font-size: 2.75rem; font-weight: 800; letter-spacing: -0.02em; color: #fff;">
+      <span class="astro-pill pill-white" style="font-size: 0.85rem; padding: 0.4rem 1.2rem;">ASTRO 2026 STAGE</span>
+      <h1 id="standby-title" style="font-family: var(--font-title); font-size: 3.25rem; font-weight: 900; letter-spacing: -0.02em; color: var(--astro-navy); text-shadow: 0 4px 16px rgba(30, 58, 138, 0.15);">
         SIAPKAN JARI ANDA DI ATAS BEL
       </h1>
-      <p id="standby-sub" style="color: var(--text-muted); font-size: 1.25rem; max-width: 600px;">
+      <p id="standby-sub" style="color: var(--text-muted); font-size: 1.35rem; max-width: 650px; font-weight: 500;">
         Bel akan dibuka oleh juri. Peserta tercepat akan mendapatkan kesempatan menjawab.
       </p>
     </div>
 
     <!-- Tampilan Pemenang Bel -->
-    <div id="winner-view" style="display: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1.75rem;">
-      <!-- Kartu Juara #1 -->
+    <div id="winner-view" style="display: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2rem;">
+      <!-- Kartu Juara #1 (Spotlight WindowCard) -->
       <div class="champion-spotlight">
         <div class="champion-rank-badge">
           PEMENANG BEL TERCEPAT
@@ -70,52 +79,31 @@
     </div>
   </main>
 
-  <!-- Footer Bar Proyektor -->
+  <!-- Footer Bar Proyektor (GlassBar) -->
   <footer class="projector-footer">
     <div class="qr-widget">
       <img id="proj-qr-img" class="qr-img" src="" alt="QR Code">
       <div class="qr-text">
         <h4>Scan untuk Bergabung</h4>
-        <p id="proj-join-url">http://localhost:3000</p>
+        <p id="proj-join-url">http://localhost:3001</p>
       </div>
     </div>
 
-    <!-- Quick Control Bar (Start / Reset / Lie / Lock) -->
-    <div class="proj-control-group">
-      <button id="btn-proj-start" class="btn-proj-ctrl btn-proj-start" title="Buka bel untuk peserta (Shortcut: Spasi)">
-        <span>BUKA (START)</span>
-        <kbd>Spasi</kbd>
-      </button>
-      <button id="btn-proj-reset" class="btn-proj-ctrl btn-proj-reset" title="Reset antrean bel (Shortcut: Enter)">
-        <span>RESET</span>
-        <kbd>Enter</kbd>
-      </button>
-      <button id="btn-proj-lie" class="btn-proj-ctrl btn-proj-lie" title="Peserta Salah (Shortcut: L)">
-        <span>LIE (SALAH)</span>
-        <kbd>L</kbd>
-      </button>
-      <button id="btn-proj-lock" class="btn-proj-ctrl btn-proj-lock" title="Kunci bel (Shortcut: Esc)">
-        <span>KUNCI</span>
-        <kbd>Esc</kbd>
-      </button>
-    </div>
-
-    <div style="display: flex; align-items: center; gap: 1.25rem;">
-      <div id="round-indicator" style="font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; color: var(--text-muted);">
-        Ronde: <span id="round-number" style="color: #fff;">1</span>
+    <!-- Info Ronde -->
+    <div class="proj-meta-group">
+      <div id="round-indicator" class="proj-meta-pill" style="cursor: pointer;" title="Klik untuk reset ronde ke 1 [R]">
+        <span>Ronde:</span>
+        <strong id="round-number">1</strong>
       </div>
-      <button id="btn-sound-toggle" style="background-color: var(--bg-subtle); border: 1px solid var(--border-color); color: #fff; padding: 0.45rem 0.9rem; border-radius: var(--radius-full); cursor: pointer; font-size: 0.85rem; font-weight: 600;">
-        Audio Aktif
-      </button>
-      <button id="btn-fullscreen" style="background-color: var(--bg-subtle); border: 1px solid var(--border-color); color: #93c5fd; padding: 0.45rem 0.9rem; border-radius: var(--radius-full); cursor: pointer; font-size: 0.85rem; font-weight: 600;">
-        Layar Penuh
-      </button>
     </div>
   </footer>
 
+  <!-- Grounding Curved Grass Strip Frutiger Aero -->
+  <div class="grass-strip" style="position: absolute; bottom: 0; left: 0; right: 0; height: 16px; z-index: 1;"></div>
+
   <!-- Scripts -->
-  <script src="/js/vendor/centrifuge.js"></script>
-  <script src="/js/sound.js"></script>
-  <script src="/js/projector.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/sound.js?v=9"></script>
+  <script src="/js/projector.js?v=9"></script>
 </body>
 </html>

@@ -1,30 +1,48 @@
 /**
- * Sound Synthesizer & Audio Player
- * Mendukung audio MP3 (Truth / Lie) dengan fallback otomatis ke Web Audio API Synthesizer
+ * Audio Player untuk ASTRO 2026 Buzzer
+ * Hanya menggunakan audio resmi dari folder /media/:
+ * 1. Truth (Benar / Pemenang Bel Pertama): /media/truth-detector-bassboosted.mp3
+ * 2. Lie (Salah): /media/wrong-lie-incorrect-buzzer.mp3
  */
 class SoundEngine {
   constructor() {
-    this.ctx = null;
     this.volume = 0.85;
     this.muted = false;
 
-    // Preload file MP3
-    this.audioTruth = new Audio('/sounds/truth.mp3');
-    this.audioLie = new Audio('/sounds/lie.mp3');
-    this.audioTruth.preload = 'auto';
-    this.audioLie.preload = 'auto';
+    // Path audio resmi dari folder media
+    this.truthPath = '/media/truth.mp3';
+    this.liePath = '/media/lie.mp3';
+    this.buzzerPath = '/media/buzzer.mp3';
+
+    // Preload audio
+    this.preloadAudio();
   }
 
-  // Inisialisasi AudioContext pada interaksi pertama pengguna
-  init() {
-    if (!this.ctx) {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        this.ctx = new AudioCtx();
-      }
+  // Preload audio agar instan saat diputar
+  preloadAudio() {
+    try {
+      this.audioTruth = new Audio(this.truthPath);
+      this.audioLie = new Audio(this.liePath);
+      this.audioBuzzer = new Audio(this.buzzerPath);
+      this.audioTruth.preload = 'auto';
+      this.audioLie.preload = 'auto';
+      this.audioBuzzer.preload = 'auto';
+    } catch (e) {
+      console.warn('Preload audio error:', e);
     }
-    if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume();
+  }
+
+  // Inisialisasi Audio Context jika diperlukan untuk interaksi browser
+  init() {
+    // Membuka blokir autoplay di browser modern
+    if (this.audioTruth) {
+      this.audioTruth.volume = this.volume;
+    }
+    if (this.audioLie) {
+      this.audioLie.volume = this.volume;
+    }
+    if (this.audioBuzzer) {
+      this.audioBuzzer.volume = this.volume;
     }
   }
 
@@ -32,42 +50,65 @@ class SoundEngine {
     this.volume = Math.max(0, Math.min(1, val));
     if (this.audioTruth) this.audioTruth.volume = this.volume;
     if (this.audioLie) this.audioLie.volume = this.volume;
+    if (this.audioBuzzer) this.audioBuzzer.volume = this.volume;
   }
 
   setMuted(isMuted) {
     this.muted = isMuted;
   }
 
-  // Helper pemutaran file audio MP3 dengan fallback
-  playAudioFile(src, fallback) {
+  // Helper pemutaran audio (memanfaatkan preloaded instance untuk 0 latency)
+  playAudioFile(src) {
     if (this.muted) return;
     try {
-      const sound = new Audio(src);
-      sound.volume = this.volume;
-      const playPromise = sound.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(err => {
-          console.warn(`Audio play failed for ${src}, falling back to synth:`, err);
-          if (fallback) fallback();
-        });
+      let sound = null;
+      if (src === this.truthPath && this.audioTruth) {
+        sound = this.audioTruth;
+      } else if (src === this.liePath && this.audioLie) {
+        sound = this.audioLie;
+      } else if (src === this.buzzerPath && this.audioBuzzer) {
+        sound = this.audioBuzzer;
+      }
+
+      if (sound) {
+        sound.currentTime = 0;
+        sound.volume = this.volume;
+        const promise = sound.play();
+        if (promise !== undefined) {
+          promise.catch(err => {
+            console.warn(`Audio playback failed for ${src}:`, err);
+            // Fallback clone jika audio sedang terkunci/sibuk
+            const clone = sound.cloneNode(true);
+            clone.volume = this.volume;
+            clone.play().catch(e => console.warn('Fallback play error:', e));
+          });
+        }
+      } else {
+        const fresh = new Audio(src);
+        fresh.volume = this.volume;
+        fresh.play().catch(e => console.warn('Direct play error:', e));
       }
     } catch (e) {
-      if (fallback) fallback();
+      console.warn('Audio error:', e);
     }
   }
 
-  // Suara TRUTH (Benar / Pemencet Bel Pertama)
+  // 1. Suara TRUTH (Benar / Host: T)
   playTruth() {
     if (this.muted) return;
-    this.init();
-    this.playAudioFile('/sounds/truth.mp3', () => this.playCorrectSynth());
+    this.playAudioFile(this.truthPath);
   }
 
-  // Suara LIE (Salah / Jawaban Salah)
+  // 2. Suara LIE (Salah / Host: L)
   playLie() {
     if (this.muted) return;
-    this.init();
-    this.playAudioFile('/sounds/lie.mp3', () => this.playWrongSynth());
+    this.playAudioFile(this.liePath);
+  }
+
+  // 3. Suara BUZZER (Saat peserta memencet "Tekan Sekarang")
+  playBuzzer() {
+    if (this.muted) return;
+    this.playAudioFile(this.buzzerPath);
   }
 
   // Alias kompatibilitas
@@ -79,176 +120,83 @@ class SoundEngine {
     this.playLie();
   }
 
-  // Fallback Suara Benar (Synthesizer Chime)
-  playCorrectSynth() {
-    if (!this.ctx) return;
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-    const now = this.ctx.currentTime;
-
-    notes.forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      const noteTime = now + (idx * 0.08);
-      const noteDuration = 0.45;
-
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, noteTime);
-
-      gain.gain.setValueAtTime(0.001, noteTime);
-      gain.gain.linearRampToValueAtTime(0.4 * this.volume, noteTime + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.0001, noteTime + noteDuration);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(noteTime);
-      osc.stop(noteTime + noteDuration);
-    });
+  // Web Audio Context untuk countdown tick dan timeout buzzer
+  getAudioContext() {
+    if (!this.audioCtx) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (AudioContext) {
+        this.audioCtx = new AudioContext();
+      }
+    }
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+    return this.audioCtx;
   }
 
-  // Fallback Suara Salah (Synthesizer Buzz)
-  playWrongSynth() {
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    const pulses = [
-      { freq: 110, start: now, dur: 0.18 },
-      { freq: 95, start: now + 0.22, dur: 0.35 }
-    ];
-
-    pulses.forEach(pulse => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(pulse.freq, pulse.start);
-
-      gain.gain.setValueAtTime(0.001, pulse.start);
-      gain.gain.linearRampToValueAtTime(0.6 * this.volume, pulse.start + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, pulse.start + pulse.dur);
-
-      osc.connect(gain);
-      gain.connect(this.ctx.destination);
-
-      osc.start(pulse.start);
-      osc.stop(pulse.start + pulse.dur);
-    });
-  }
-
-  // Suara Bel Klasik
-  playBuzzer() {
+  // 4. Efek suara detik countdown (Ticking clock tegas, lantang & jelas di speaker)
+  playTick(isUrgent = false) {
     if (this.muted) return;
-    this.init();
-    if (!this.ctx) return;
+    try {
+      const ctx = this.getAudioContext();
+      if (!ctx) return;
 
-    const now = this.ctx.currentTime;
-    const duration = 0.55;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    const osc1 = this.ctx.createOscillator();
-    const osc2 = this.ctx.createOscillator();
-    const filter = this.ctx.createBiquadFilter();
-    const gain = this.ctx.createGain();
+      // Kombinasi triangle + sine untuk ketukan perkusi detak jam yang tebal dan jelas terdengar
+      osc1.type = 'triangle';
+      osc2.type = 'sine';
 
-    osc1.type = 'sawtooth';
-    osc1.frequency.setValueAtTime(145, now);
-    osc1.frequency.exponentialRampToValueAtTime(120, now + duration);
+      const baseFreq = isUrgent ? 1180 : 820;
+      osc1.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+      osc1.frequency.exponentialRampToValueAtTime(baseFreq * 0.45, ctx.currentTime + 0.1);
 
-    osc2.type = 'sawtooth';
-    osc2.frequency.setValueAtTime(149, now);
-    osc2.frequency.exponentialRampToValueAtTime(124, now + duration);
+      osc2.frequency.setValueAtTime(baseFreq * 1.5, ctx.currentTime);
+      osc2.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, ctx.currentTime + 0.08);
 
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(1800, now);
-    filter.frequency.exponentialRampToValueAtTime(600, now + duration);
+      // Volume lantang, punchy & bertenaga
+      gain.gain.setValueAtTime(this.volume * 0.95, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14);
 
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.85 * this.volume, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
 
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    osc1.start(now);
-    osc2.start(now);
-    osc1.stop(now + duration);
-    osc2.stop(now + duration);
+      osc1.start();
+      osc2.start();
+      osc1.stop(ctx.currentTime + 0.15);
+      osc2.stop(ctx.currentTime + 0.15);
+    } catch (e) {
+      console.warn('Play tick error:', e);
+    }
   }
 
-  // Suara Bel Terbuka / Siap Berebut
-  playUnlock() {
-    if (this.muted) return;
-    this.init();
-    if (!this.ctx) return;
-
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(320, now);
-    osc.frequency.exponentialRampToValueAtTime(750, now + 0.18);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.4 * this.volume, now + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
-
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.25);
+  // 5. Efek suara waktu habis: memutar sound LIE (media/lie.mp3) sesuai instruksi
+  playTimeout() {
+    this.playLie();
   }
 
-  // Suara Reset
-  playReset() {
-    if (this.muted) return;
-    this.init();
-    if (!this.ctx) return;
-
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(520, now);
-    osc.frequency.exponentialRampToValueAtTime(260, now + 0.15);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.3 * this.volume, now + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.2);
-  }
-
-  // Suara Detik Timer
-  playTick() {
-    if (this.muted) return;
-    this.init();
-    if (!this.ctx) return;
-
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(880, now);
-
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.25 * this.volume, now + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.06);
-
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.06);
-  }
+  // Bel lain dinonaktifkan sesuai instruksi
+  playUnlock() {}
+  playReset() {}
 }
 
 // Instance global
 window.soundEngine = new SoundEngine();
+
+// Auto unlock audio context pada gestur interaksi pertama
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    if (window.soundEngine) {
+      window.soundEngine.init();
+    }
+    window.removeEventListener('click', unlockAudio);
+    window.removeEventListener('keydown', unlockAudio);
+    window.removeEventListener('touchstart', unlockAudio);
+  };
+  window.addEventListener('click', unlockAudio);
+  window.addEventListener('keydown', unlockAudio);
+  window.addEventListener('touchstart', unlockAudio);
+}

@@ -3,150 +3,202 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Juri - Buzzer Lomba</title>
+  <title>Panel Juri - Buzzer Lomba | ASTRO 2026</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-  <!-- Header -->
+  <!-- Frutiger Aero Floating Bubbles Background -->
+  <div class="bubble-decor bubble-1"></div>
+  <div class="bubble-decor bubble-4"></div>
+
+  <!-- Header Frosted Glass Nav -->
   <header class="app-header">
-    <div class="brand">
-      <span class="brand-dot"></span>
-      <span>PANEL KONTROL JURI</span>
+    <div class="brand" style="display: flex; align-items: center; gap: 0.6rem;">
+      <img src="https://astro-cdn.oktaa.my.id/logo.png" alt="ASTRO Logo" style="height: 32px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(30, 58, 138, 0.18));">
+      <span>ASTRO PANEL JURI</span>
     </div>
     <div class="header-meta">
+      <div id="host-round-pill" class="badge-pill" style="background: rgba(255,255,255,0.85); color: var(--astro-navy); border: 1.5px solid var(--border-tint); display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem;">
+        <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted);">RONDE:</span>
+        <strong id="host-round-number" style="font-family: var(--font-title); font-size: 1.05rem; color: var(--astro-blue);">1</strong>
+        <button id="btn-quick-reset-round" type="button" style="background: #fee2e2; border: 1px solid #fca5a5; color: #b91c1c; border-radius: 6px; padding: 2px 7px; font-size: 0.7rem; font-weight: 700; cursor: pointer;" title="Reset ronde kembali ke 1">Reset</button>
+      </div>
       <div id="status-pill" class="badge-pill status-locked">
         <span class="pulse-dot"></span>
         <span id="status-label">TERKUNCI</span>
       </div>
-      <a href="/projector" target="_blank" class="badge-pill" style="background-color: var(--bg-subtle); color: #93c5fd; text-decoration: none; border: 1px solid var(--border-color);">
+      <a href="/projector" target="_blank" class="astro-pill pill-white" style="text-decoration: none;">
         Buka Layar Proyektor &rarr;
       </a>
     </div>
   </header>
 
   <main class="host-container">
-    <!-- Baris Kontrol Utama -->
-    <section class="glass-panel control-banner">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <!-- Baris Kontrol Utama (WindowCard) -->
+    <section class="window-card control-banner">
+      <div class="window-titlebar">
+        <div class="window-dot-group">
+          <span class="window-close-dot"></span>
+          <span class="window-title">KONTROL PERTANDINGAN</span>
+        </div>
+        <span class="astro-pill pill-white" style="font-size: 0.65rem; padding: 0.2rem 0.6rem;">COMMAND BAR</span>
+      </div>
+
+      <div class="window-body" style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h2 style="font-family: var(--font-title); font-size: 1.45rem; font-weight: 800; color: var(--astro-navy);">Kontrol Pertandingan</h2>
+            <p style="color: var(--text-muted); font-size: 0.88rem;">Gunakan tombol aksi di bawah atau shortcut keyboard untuk kecepatan respon juri</p>
+          </div>
+          <div style="font-family: var(--font-subtitle); font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 0.6rem; flex-wrap: wrap; font-weight: 700;">
+            <span class="astro-pill pill-white"><kbd style="background:#e2e8f0; padding:1px 5px; border-radius:4px; color:#1e3a8a; margin-right:4px;">Spasi</kbd> Buka</span>
+            <span class="astro-pill pill-white"><kbd style="background:#e2e8f0; padding:1px 5px; border-radius:4px; color:#1e3a8a; margin-right:4px;">Enter</kbd> Reset</span>
+            <span class="astro-pill pill-white"><kbd style="background:#fee2e2; padding:1px 5px; border-radius:4px; color:#b91c1c; margin-right:4px;">R</kbd> Reset Ronde</span>
+            <span class="astro-pill pill-white"><kbd style="background:#e2e8f0; padding:1px 5px; border-radius:4px; color:#1e3a8a; margin-right:4px;">K</kbd> Kunci</span>
+            <span class="astro-pill pill-white"><kbd style="background:#fee2e2; padding:1px 5px; border-radius:4px; color:#b91c1c; margin-right:4px;">L</kbd> Lie</span>
+            <span class="astro-pill pill-white"><kbd style="background:#dcfce7; padding:1px 5px; border-radius:4px; color:#15803d; margin-right:4px;">T</kbd> Truth</span>
+          </div>
+        </div>
+
+        <!-- Action Buttons Row -->
+        <div class="action-buttons-row">
+          <button id="btn-unlock" class="btn-ctrl btn-unlock">
+            <span>BUKA BEL (START)</span>
+            <small>Peserta dapat memencet bel [Spasi]</small>
+          </button>
+
+          <button id="btn-reset" class="btn-ctrl btn-reset">
+            <span>RESET BEL</span>
+            <small>Kosongkan antrean bel [Enter]</small>
+          </button>
+
+          <button id="btn-lock" class="btn-ctrl btn-lock">
+            <span>KUNCI BEL</span>
+            <small>Hentikan bel sementara [K]</small>
+          </button>
+        </div>
+
+        <!-- Soundboard Row -->
         <div>
-          <h2 style="font-family: var(--font-display); font-size: 1.35rem; font-weight: 700;">Kontrol Pertandingan</h2>
-          <p style="color: var(--text-muted); font-size: 0.85rem;">Gunakan tombol di bawah atau shortcut keyboard untuk kecepatan respon</p>
-        </div>
-        <div style="font-size: 0.8rem; color: var(--text-dim); display: flex; gap: 0.6rem; flex-wrap: wrap;">
-          <span><kbd style="background:#1e293b; padding:2px 6px; border-radius:4px; color:#fff;">Spasi</kbd> Buka</span>
-          <span><kbd style="background:#1e293b; padding:2px 6px; border-radius:4px; color:#fff;">Enter</kbd> Reset</span>
-          <span><kbd style="background:#1e293b; padding:2px 6px; border-radius:4px; color:#fff;">Esc</kbd> Kunci</span>
-          <span><kbd style="background:#7f1d1d; padding:2px 6px; border-radius:4px; color:#fca5a5;">L</kbd> Lie</span>
-          <span><kbd style="background:#14532d; padding:2px 6px; border-radius:4px; color:#86efac;">T</kbd> Truth</span>
-        </div>
-      </div>
-
-      <!-- Action Buttons Row -->
-      <div class="action-buttons-row">
-        <button id="btn-unlock" class="btn-ctrl btn-unlock">
-          <span>BUKA BEL (START)</span>
-          <small>Peserta dapat memencet bel [Spasi]</small>
-        </button>
-
-        <button id="btn-reset" class="btn-ctrl btn-reset">
-          <span>RESET BEL</span>
-          <small>Kosongkan antrean bel [Enter]</small>
-        </button>
-
-        <button id="btn-lock" class="btn-ctrl btn-lock">
-          <span>KUNCI BEL</span>
-          <small>Hentikan bel sementara [Esc]</small>
-        </button>
-      </div>
-
-      <!-- Soundboard Row -->
-      <div>
-        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
-          Pemicu Suara (Truth / Lie) & Timer
-        </div>
-        <div class="sound-board-grid">
-          <button id="sfx-lie" class="btn-sfx" style="background-color: #7f1d1d; border-color: #991b1b; color: #fecaca;">
-            LIE (SALAH) [L]
-          </button>
-          <button id="sfx-truth" class="btn-sfx" style="background-color: #14532d; border-color: #166534; color: #bbf7d0;">
-            TRUTH (BENAR) [T]
-          </button>
-          <button id="sfx-buzzer" class="btn-sfx">
-            Bel Standar
-          </button>
-          <button id="btn-timer" class="btn-sfx">
-            Hitung Mundur (<span id="timer-display-btn">5s</span>)
-          </button>
+          <div style="font-family: var(--font-subtitle); font-size: 0.75rem; font-weight: 800; color: var(--astro-navy); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em;">
+            Pemicu Suara (Truth / Lie) & Timer Hitung Mundur
+          </div>
+          <div class="sound-board-grid">
+            <button id="sfx-truth" class="btn-sfx btn-sfx-truth">
+              TRUTH (BENAR) [T]
+            </button>
+            <button id="sfx-lie" class="btn-sfx btn-sfx-lie">
+              LIE (SALAH) [L]
+            </button>
+            <button id="btn-timer" class="btn-sfx">
+              Hitung Mundur (<span id="timer-display-btn">5s</span>) [C]
+            </button>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- Grid: Antrean vs Pengaturan -->
     <div class="host-grid">
-      <!-- Kolom Kiri: Antrean Pemenang Bel -->
-      <section class="glass-panel queue-card">
-        <div class="section-title">
-          <span>Antrean Peserta</span>
-          <span id="queue-count" class="badge-pill" style="background-color: var(--bg-subtle); color: var(--text-muted); font-size: 0.75rem;">0 Peserta</span>
+      <!-- Kolom Kiri: Antrean Pemenang Bel (WindowCard) -->
+      <section class="window-card queue-card">
+        <div class="window-titlebar">
+          <div class="window-dot-group">
+            <span class="window-close-dot"></span>
+            <span class="window-title">ANTREAN PESERTA</span>
+          </div>
+          <span id="queue-count" class="astro-pill pill-white" style="font-size: 0.68rem; padding: 0.25rem 0.75rem;">0 Peserta</span>
         </div>
 
-        <div id="buzz-list" class="buzz-list">
-          <div id="empty-queue" style="text-align: center; padding: 3rem 1rem; color: var(--text-dim); font-size: 0.9rem;">
-            Belum ada bel yang ditekan.<br>Klik <strong>"Buka Bel (Start)"</strong> agar peserta dapat berebut.
+        <div class="window-body">
+          <div id="buzz-list" class="buzz-list">
+            <div id="empty-queue" style="text-align: center; padding: 3rem 1rem; color: var(--text-dim); font-size: 0.95rem;">
+              Belum ada bel yang ditekan.<br>Klik <strong style="color: var(--astro-blue);">"Buka Bel (Start)"</strong> agar peserta dapat berebut menjawab.
+            </div>
           </div>
         </div>
       </section>
 
       <!-- Kolom Kanan: Pengaturan & QR Code -->
-      <section style="display: flex; flex-direction: column; gap: 1.5rem;">
-        <!-- Card QR Code -->
-        <div class="glass-panel" style="padding: 1.5rem; text-align: center;">
-          <h3 style="font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; margin-bottom: 0.35rem;">Akses Peserta (Wi-Fi)</h3>
-          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Scan untuk menghubungkan smartphone peserta</p>
+      <section style="display: flex; flex-direction: column; gap: 1.75rem;">
+        <!-- Card QR Code (WindowCard) -->
+        <div class="window-card">
+          <div class="window-titlebar">
+            <div class="window-dot-group">
+              <span class="window-close-dot"></span>
+              <span class="window-title">AKSES PESERTA (WI-FI)</span>
+            </div>
+            <span class="astro-pill pill-white" style="font-size: 0.65rem; padding: 0.2rem 0.6rem;">SCAN QR</span>
+          </div>
+          <div class="window-body" style="text-align: center;">
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin-bottom: 1.1rem;">Scan untuk menghubungkan smartphone peserta lomba</p>
 
-          <img id="qr-img" src="" alt="QR Code" style="width: 150px; height: 150px; border-radius: 8px; background: white; padding: 6px; margin: 0 auto 0.75rem; display: block;">
-          
-          <div style="background-color: var(--bg-subtle); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-            <a id="join-link" href="#" target="_blank" style="color: #60a5fa; font-family: monospace; font-size: 0.9rem; text-decoration: none; font-weight: 600; word-break: break-all;">
-              http://localhost:3000
-            </a>
+            <img id="qr-img" src="" alt="QR Code" style="width: 160px; height: 160px; border-radius: 12px; background: white; padding: 6px; margin: 0 auto 0.9rem; display: block; border: 1.5px solid var(--border-tint); box-shadow: var(--shadow-soft);">
+            
+            <div style="background-color: var(--bg-surface); padding: 0.6rem 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-tint);">
+              <a id="join-link" href="#" target="_blank" style="color: var(--astro-blue); font-family: var(--font-subtitle); font-size: 0.85rem; text-decoration: none; font-weight: 700; word-break: break-all;">
+                http://localhost:3001
+              </a>
+            </div>
           </div>
         </div>
 
-        <!-- Card Pengaturan -->
-        <div class="glass-panel" style="padding: 1.5rem;">
-          <h3 style="font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;">Pengaturan Pertandingan</h3>
-
-          <div class="form-group">
-            <label class="form-label">Mode Buzzer</label>
-            <select id="setting-mode" class="form-input" style="cursor: pointer;">
-              <option value="all">Semua Urutan (Menampilkan #1, #2, #3, dst)</option>
-              <option value="first_only">Hanya 1 Tercepat (Langsung Kunci setelah #1)</option>
-            </select>
+        <!-- Card Pengaturan (WindowCard) -->
+        <div class="window-card">
+          <div class="window-titlebar">
+            <div class="window-dot-group">
+              <span class="window-close-dot"></span>
+              <span class="window-title">PENGATURAN PERTANDINGAN</span>
+            </div>
+            <span class="astro-pill pill-white" style="font-size: 0.65rem; padding: 0.2rem 0.6rem;">CONFIG</span>
           </div>
+          <div class="window-body">
+            <div class="form-group">
+              <label class="form-label">Mode Buzzer</label>
+              <select id="setting-mode" class="form-input" style="cursor: pointer;">
+                <option value="all">Semua Urutan (Menampilkan #1, #2, #3, dst)</option>
+                <option value="first_only">Hanya 1 Tercepat (Langsung Kunci setelah #1)</option>
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">Durasi Timer Menjawab</label>
-            <select id="setting-timer" class="form-input" style="cursor: pointer;">
-              <option value="3">3 Detik</option>
-              <option value="5" selected>5 Detik</option>
-              <option value="10">10 Detik</option>
-              <option value="15">15 Detik</option>
-            </select>
-          </div>
+            <div class="form-group">
+              <label class="form-label">Durasi Timer Menjawab</label>
+              <select id="setting-timer" class="form-input" style="cursor: pointer;">
+                <option value="3">3 Detik</option>
+                <option value="5" selected>5 Detik</option>
+                <option value="10">10 Detik</option>
+                <option value="15">15 Detik</option>
+              </select>
+            </div>
 
-          <div class="form-group">
-            <label class="form-label">Volume Suara Host</label>
-            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.8" style="width: 100%; cursor: pointer;">
+            <div class="form-group">
+              <label class="form-label">Nomor Ronde / Babak</label>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="button" id="btn-round-dec" class="astro-pill pill-white" style="cursor: pointer; font-size: 1rem; padding: 0.35rem 0.85rem; border: 1.5px solid var(--border-tint); font-weight: 800;" title="Kurangi Ronde">-</button>
+                <div style="font-family: var(--font-title); font-size: 1.25rem; font-weight: 800; color: var(--astro-blue); min-width: 45px; text-align: center;">
+                  <span id="setting-round-display">1</span>
+                </div>
+                <button type="button" id="btn-round-inc" class="astro-pill pill-white" style="cursor: pointer; font-size: 1rem; padding: 0.35rem 0.85rem; border: 1.5px solid var(--border-tint); font-weight: 800;" title="Tambah Ronde">+</button>
+                <button type="button" id="btn-reset-round" class="astro-pill" style="cursor: pointer; font-size: 0.75rem; padding: 0.45rem 0.85rem; background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; font-weight: 700; margin-left: auto;" title="Reset nomor ronde kembali ke 1">Reset ke Ronde 1</button>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label class="form-label">Volume Suara Juri</label>
+              <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.8" style="width: 100%; cursor: pointer; accent-color: var(--astro-blue);">
+            </div>
           </div>
         </div>
       </section>
     </div>
   </main>
 
+  <!-- Grounding Curved Grass Strip Frutiger Aero -->
+  <div class="grass-strip"></div>
+
   <!-- Scripts -->
-  <script src="/js/vendor/centrifuge.js"></script>
-  <script src="/js/sound.js"></script>
-  <script src="/js/host.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/sound.js?v=9"></script>
+  <script src="/js/host.js?v=9"></script>
 </body>
 </html>
