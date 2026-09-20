@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Juri - Buzzer Lomba</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span>PANEL KONTROL JURI</span>
+    </div>
+    <div class="header-meta">
+      <div id="status-pill" class="badge-pill status-locked">
+        <span class="pulse-dot"></span>
+        <span id="status-label">TERKUNCI</span>
+      </div>
+      <a href="/projector" target="_blank" class="badge-pill" style="background-color: var(--bg-subtle); color: #93c5fd; text-decoration: none; border: 1px solid var(--border-color);">
+        Buka Layar Proyektor &rarr;
+      </a>
+    </div>
+  </header>
+
+  <main class="host-container">
+    <!-- Baris Kontrol Utama -->
+    <section class="glass-panel control-banner">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2 style="font-family: var(--font-display); font-size: 1.35rem; font-weight: 700;">Kontrol Pertandingan</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">Gunakan tombol di bawah atau shortcut keyboard untuk kecepatan respon</p>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--text-dim); display: flex; gap: 0.6rem; flex-wrap: wrap;">
+          <span><kbd style="background:#1e293b; padding:2px 6px; border-radius:4px; color:#fff;">Spasi</kbd> Buka</span>
+          <span><kbd style="background:#1e293b; padding:2px 6px; border-radius:4px; color:#fff;">Enter</kbd> Reset</span>
+          <span><kbd style="background:#1e293b; padding:2px 6px; border-radius:4px; color:#fff;">Esc</kbd> Kunci</span>
+          <span><kbd style="background:#7f1d1d; padding:2px 6px; border-radius:4px; color:#fca5a5;">L</kbd> Lie</span>
+          <span><kbd style="background:#14532d; padding:2px 6px; border-radius:4px; color:#86efac;">T</kbd> Truth</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons Row -->
+      <div class="action-buttons-row">
+        <button id="btn-unlock" class="btn-ctrl btn-unlock">
+          <span>BUKA BEL (START)</span>
+          <small>Peserta dapat memencet bel [Spasi]</small>
+        </button>
+
+        <button id="btn-reset" class="btn-ctrl btn-reset">
+          <span>RESET BEL</span>
+          <small>Kosongkan antrean bel [Enter]</small>
+        </button>
+
+        <button id="btn-lock" class="btn-ctrl btn-lock">
+          <span>KUNCI BEL</span>
+          <small>Hentikan bel sementara [Esc]</small>
+        </button>
+      </div>
+
+      <!-- Soundboard Row -->
+      <div>
+        <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em;">
+          Pemicu Suara (Truth / Lie) & Timer
+        </div>
+        <div class="sound-board-grid">
+          <button id="sfx-lie" class="btn-sfx" style="background-color: #7f1d1d; border-color: #991b1b; color: #fecaca;">
+            LIE (SALAH) [L]
+          </button>
+          <button id="sfx-truth" class="btn-sfx" style="background-color: #14532d; border-color: #166534; color: #bbf7d0;">
+            TRUTH (BENAR) [T]
+          </button>
+          <button id="sfx-buzzer" class="btn-sfx">
+            Bel Standar
+          </button>
+          <button id="btn-timer" class="btn-sfx">
+            Hitung Mundur (<span id="timer-display-btn">5s</span>)
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Grid: Antrean vs Pengaturan -->
+    <div class="host-grid">
+      <!-- Kolom Kiri: Antrean Pemenang Bel -->
+      <section class="glass-panel queue-card">
+        <div class="section-title">
+          <span>Antrean Peserta</span>
+          <span id="queue-count" class="badge-pill" style="background-color: var(--bg-subtle); color: var(--text-muted); font-size: 0.75rem;">0 Peserta</span>
+        </div>
+
+        <div id="buzz-list" class="buzz-list">
+          <div id="empty-queue" style="text-align: center; padding: 3rem 1rem; color: var(--text-dim); font-size: 0.9rem;">
+            Belum ada bel yang ditekan.<br>Klik <strong>"Buka Bel (Start)"</strong> agar peserta dapat berebut.
+          </div>
+        </div>
+      </section>
+
+      <!-- Kolom Kanan: Pengaturan & QR Code -->
+      <section style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Card QR Code -->
+        <div class="glass-panel" style="padding: 1.5rem; text-align: center;">
+          <h3 style="font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; margin-bottom: 0.35rem;">Akses Peserta (Wi-Fi)</h3>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Scan untuk menghubungkan smartphone peserta</p>
+
+          <img id="qr-img" src="" alt="QR Code" style="width: 150px; height: 150px; border-radius: 8px; background: white; padding: 6px; margin: 0 auto 0.75rem; display: block;">
+          
+          <div style="background-color: var(--bg-subtle); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <a id="join-link" href="#" target="_blank" style="color: #60a5fa; font-family: monospace; font-size: 0.9rem; text-decoration: none; font-weight: 600; word-break: break-all;">
+              http://localhost:3000
+            </a>
+          </div>
+        </div>
+
+        <!-- Card Pengaturan -->
+        <div class="glass-panel" style="padding: 1.5rem;">
+          <h3 style="font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;">Pengaturan Pertandingan</h3>
+
+          <div class="form-group">
+            <label class="form-label">Mode Buzzer</label>
+            <select id="setting-mode" class="form-input" style="cursor: pointer;">
+              <option value="all">Semua Urutan (Menampilkan #1, #2, #3, dst)</option>
+              <option value="first_only">Hanya 1 Tercepat (Langsung Kunci setelah #1)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Durasi Timer Menjawab</label>
+            <select id="setting-timer" class="form-input" style="cursor: pointer;">
+              <option value="3">3 Detik</option>
+              <option value="5" selected>5 Detik</option>
+              <option value="10">10 Detik</option>
+              <option value="15">15 Detik</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Volume Suara Host</label>
+            <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.8" style="width: 100%; cursor: pointer;">
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script src="/js/vendor/centrifuge.js"></script>
+  <script src="/js/sound.js"></script>
+  <script src="/js/host.js"></script>
+</body>
+</html>

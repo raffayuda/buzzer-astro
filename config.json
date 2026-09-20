@@ -1,0 +1,26 @@
+{
+  "client": {
+    "insecure": true,
+    "allowed_origins": ["*"]
+  },
+  "http_api": {
+    "key": "buzzer-secret-api-key"
+  },
+  "channel": {
+    "without_namespace": {
+      "allow_subscribe_for_client": true,
+      "allow_subscribe_for_anonymous": true,
+      "presence": true,
+      "join_leave": true
+    },
+    "namespaces": [
+      {
+        "name": "buzzer",
+        "allow_subscribe_for_client": true,
+        "allow_subscribe_for_anonymous": true,
+        "presence": true,
+        "join_leave": true
+      }
+    ]
+  }
+}

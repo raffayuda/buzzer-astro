@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Layar Proyektor - Lomba Cerdas Cermat</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="projector-body">
+  <!-- Top Bar Layar Proyektor -->
+  <header class="projector-header">
+    <div class="projector-title">
+      LOMBA CERDAS CERMAT
+    </div>
+    <div id="projector-status" class="projector-status-box status-box-locked">
+      MENUNGGU SOAL
+    </div>
+  </header>
+
+  <!-- Timer Bar -->
+  <div id="timer-bar-wrap" class="timer-bar-wrap" style="display: none;">
+    <div id="timer-bar-fill" class="timer-bar-fill"></div>
+  </div>
+
+  <!-- Panggung Utama (Stage) -->
+  <main class="projector-stage">
+    <!-- Tampilan Standby -->
+    <div id="standby-view" style="text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.25rem;">
+      <h1 id="standby-title" style="font-family: var(--font-display); font-size: 2.75rem; font-weight: 800; letter-spacing: -0.02em; color: #fff;">
+        SIAPKAN JARI ANDA DI ATAS BEL
+      </h1>
+      <p id="standby-sub" style="color: var(--text-muted); font-size: 1.25rem; max-width: 600px;">
+        Bel akan dibuka oleh juri. Peserta tercepat akan mendapatkan kesempatan menjawab.
+      </p>
+    </div>
+
+    <!-- Tampilan Pemenang Bel -->
+    <div id="winner-view" style="display: none; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 1.75rem;">
+      <!-- Kartu Juara #1 -->
+      <div class="champion-spotlight">
+        <div class="champion-rank-badge">
+          PEMENANG BEL TERCEPAT
+        </div>
+        <div id="champion-name" class="champion-name">
+          -
+        </div>
+        <div class="champion-time-badge">
+          WAKTU TERCEPAT (0 ms)
+        </div>
+      </div>
+
+      <!-- Antrean Posisi #2 dan #3 -->
+      <div id="runners-row" class="runners-row" style="display: none;">
+        <div id="runner-2" class="runner-card" style="display: none;">
+          <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <span class="runner-rank">#2</span>
+            <span id="runner-2-name" class="runner-name">-</span>
+          </div>
+          <span id="runner-2-delta" class="runner-delta">+0.000s</span>
+        </div>
+
+        <div id="runner-3" class="runner-card" style="display: none;">
+          <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <span class="runner-rank">#3</span>
+            <span id="runner-3-name" class="runner-name">-</span>
+          </div>
+          <span id="runner-3-delta" class="runner-delta">+0.000s</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer Bar Proyektor -->
+  <footer class="projector-footer">
+    <div class="qr-widget">
+      <img id="proj-qr-img" class="qr-img" src="" alt="QR Code">
+      <div class="qr-text">
+        <h4>Scan untuk Bergabung</h4>
+        <p id="proj-join-url">http://localhost:3000</p>
+      </div>
+    </div>
+
+    <!-- Quick Control Bar (Start / Reset / Lie / Lock) -->
+    <div class="proj-control-group">
+      <button id="btn-proj-start" class="btn-proj-ctrl btn-proj-start" title="Buka bel untuk peserta (Shortcut: Spasi)">
+        <span>BUKA (START)</span>
+        <kbd>Spasi</kbd>
+      </button>
+      <button id="btn-proj-reset" class="btn-proj-ctrl btn-proj-reset" title="Reset antrean bel (Shortcut: Enter)">
+        <span>RESET</span>
+        <kbd>Enter</kbd>
+      </button>
+      <button id="btn-proj-lie" class="btn-proj-ctrl btn-proj-lie" title="Peserta Salah (Shortcut: L)">
+        <span>LIE (SALAH)</span>
+        <kbd>L</kbd>
+      </button>
+      <button id="btn-proj-lock" class="btn-proj-ctrl btn-proj-lock" title="Kunci bel (Shortcut: Esc)">
+        <span>KUNCI</span>
+        <kbd>Esc</kbd>
+      </button>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1.25rem;">
+      <div id="round-indicator" style="font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; color: var(--text-muted);">
+        Ronde: <span id="round-number" style="color: #fff;">1</span>
+      </div>
+      <button id="btn-sound-toggle" style="background-color: var(--bg-subtle); border: 1px solid var(--border-color); color: #fff; padding: 0.45rem 0.9rem; border-radius: var(--radius-full); cursor: pointer; font-size: 0.85rem; font-weight: 600;">
+        Audio Aktif
+      </button>
+      <button id="btn-fullscreen" style="background-color: var(--bg-subtle); border: 1px solid var(--border-color); color: #93c5fd; padding: 0.45rem 0.9rem; border-radius: var(--radius-full); cursor: pointer; font-size: 0.85rem; font-weight: 600;">
+        Layar Penuh
+      </button>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="/js/vendor/centrifuge.js"></script>
+  <script src="/js/sound.js"></script>
+  <script src="/js/projector.js"></script>
+</body>
+</html>

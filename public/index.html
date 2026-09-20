@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Buzzer Lomba - Peserta</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span>BUZZER LOMBA</span>
+    </div>
+    <div class="header-meta">
+      <div id="conn-badge" class="badge-pill status-locked">
+        <span class="pulse-dot"></span>
+        <span id="conn-text">Menghubungkan...</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="user-container">
+    <!-- Form Pendaftaran Peserta -->
+    <section id="reg-section" class="glass-panel reg-card">
+      <h2>Masuk ke Pertandingan</h2>
+      <p>Masukkan nama peserta atau nama regu untuk memulai</p>
+
+      <form id="join-form">
+        <div class="form-group">
+          <label class="form-label" for="player-name">Nama Peserta / Regu</label>
+          <input 
+            type="text" 
+            id="player-name" 
+            class="form-input" 
+            placeholder="Contoh: Regu A" 
+            maxlength="25" 
+            required
+            autocomplete="off"
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Warna Tim</label>
+          <div class="color-options">
+            <button type="button" class="color-btn selected" data-color="#dc2626" style="background-color: #dc2626;"></button>
+            <button type="button" class="color-btn" data-color="#2563eb" style="background-color: #2563eb;"></button>
+            <button type="button" class="color-btn" data-color="#16a34a" style="background-color: #16a34a;"></button>
+            <button type="button" class="color-btn" data-color="#d97706" style="background-color: #d97706;"></button>
+            <button type="button" class="color-btn" data-color="#7c3aed" style="background-color: #7c3aed;"></button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-primary" id="btn-join">
+          Masuk ke Pertandingan
+        </button>
+      </form>
+    </section>
+
+    <!-- Arena Tombol Buzzer -->
+    <section id="buzzer-section" class="glass-panel game-card" style="display: none;">
+      <!-- Profil Peserta -->
+      <div class="user-profile-bar">
+        <span id="profile-indicator" class="team-indicator"></span>
+        <span id="profile-name" class="user-display-name">-</span>
+        <button id="btn-change-name" style="background:none; border:none; color:var(--text-dim); font-size:0.8rem; cursor:pointer; text-decoration:underline;">Ganti</button>
+      </div>
+
+      <!-- Status Game Real-Time -->
+      <div id="status-text" class="game-status-text status-txt-locked">
+        MENUNGGU SOAL
+      </div>
+
+      <!-- Tombol Buzzer Tactile -->
+      <div class="buzzer-stage">
+        <div id="buzzer-halo" class="buzzer-halo"></div>
+        <div class="buzzer-base"></div>
+        <button id="buzzer-btn" class="buzzer-btn" disabled>
+          <span id="btn-label">TEKAN BEL</span>
+        </button>
+      </div>
+
+      <!-- Kartu Hasil Peringkat -->
+      <div id="result-box" class="winner-card" style="display: none;">
+        <div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Status Anda</div>
+          <div id="result-title" style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: #fff;">TERCEPAT</div>
+          <div id="result-delta" style="font-family: monospace; font-size: 0.9rem; color: #60a5fa;">0 ms</div>
+        </div>
+        <div id="result-rank" class="winner-rank">#1</div>
+      </div>
+
+      <!-- Indikator Suara & Getar -->
+      <div style="font-size: 0.8rem; color: var(--text-dim); display: flex; gap: 1.25rem; align-items: center;">
+        <span>Audio Aktif</span>
+        <span>Getar Aktif</span>
+      </div>
+    </section>
+  </main>
+
+  <!-- Scripts -->
+  <script src="/js/vendor/centrifuge.js"></script>
+  <script src="/js/sound.js"></script>
+  <script src="/js/client.js"></script>
+</body>
+</html>
