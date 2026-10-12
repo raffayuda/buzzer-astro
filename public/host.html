@@ -15,7 +15,7 @@
   <header class="app-header">
     <div class="brand" style="display: flex; align-items: center; gap: 0.6rem;">
       <img src="https://astro-cdn.oktaa.my.id/logo.png" alt="ASTRO Logo" style="height: 32px; width: auto; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(30, 58, 138, 0.18));">
-      <span>ASTRO PANEL JURI</span>
+      <span class="brand-text">ASTRO PANEL JURI</span>
     </div>
     <div class="header-meta">
       <div id="host-round-pill" class="badge-pill" style="background: rgba(255,255,255,0.85); color: var(--astro-navy); border: 1.5px solid var(--border-tint); display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0.85rem;">
@@ -27,8 +27,8 @@
         <span class="pulse-dot"></span>
         <span id="status-label">TERKUNCI</span>
       </div>
-      <a href="/projector" target="_blank" class="astro-pill pill-white" style="text-decoration: none;">
-        Buka Layar Proyektor &rarr;
+      <a href="/projector" target="_blank" class="astro-pill pill-white header-proyektor-link" style="text-decoration: none;">
+        <span>Proyektor &rarr;</span>
       </a>
     </div>
   </header>
@@ -50,7 +50,7 @@
             <h2 style="font-family: var(--font-title); font-size: 1.45rem; font-weight: 800; color: var(--astro-navy);">Kontrol Pertandingan</h2>
             <p style="color: var(--text-muted); font-size: 0.88rem;">Gunakan tombol aksi di bawah atau shortcut keyboard untuk kecepatan respon juri</p>
           </div>
-          <div style="font-family: var(--font-subtitle); font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 0.6rem; flex-wrap: wrap; font-weight: 700;">
+          <div class="host-shortcuts" style="font-family: var(--font-subtitle); font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 0.6rem; flex-wrap: wrap; font-weight: 700;">
             <span class="astro-pill pill-white"><kbd style="background:#e2e8f0; padding:1px 5px; border-radius:4px; color:#1e3a8a; margin-right:4px;">Spasi</kbd> Buka</span>
             <span class="astro-pill pill-white"><kbd style="background:#e2e8f0; padding:1px 5px; border-radius:4px; color:#1e3a8a; margin-right:4px;">Enter</kbd> Reset</span>
             <span class="astro-pill pill-white"><kbd style="background:#fee2e2; padding:1px 5px; border-radius:4px; color:#b91c1c; margin-right:4px;">R</kbd> Reset Ronde</span>
@@ -90,7 +90,7 @@
             <button id="sfx-lie" class="btn-sfx btn-sfx-lie">
               LIE (SALAH) [L]
             </button>
-            <button id="btn-timer" class="btn-sfx">
+            <button id="btn-timer" class="btn-sfx btn-sfx-timer">
               Hitung Mundur (<span id="timer-display-btn">5s</span>) [C]
             </button>
           </div>

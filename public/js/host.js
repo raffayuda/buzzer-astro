@@ -67,7 +67,10 @@ function initSocket() {
 // 2. Ambil Info Server (IP, QR Code, dan State Awal)
 async function fetchInfo() {
   try {
-    const res = await fetch('/api/info');
+    const urlParams = new URLSearchParams(window.location.search);
+    const publicUrl = urlParams.get('public_url') || (window.location.hostname.includes('oktaa.my.id') ? 'https://astro.nurulfikri.ac.id/buzzer' : '');
+    const apiUrl = publicUrl ? `/api/info?public_url=${encodeURIComponent(publicUrl)}` : '/api/info';
+    const res = await fetch(apiUrl);
     const data = await res.json();
     if (data.qrCodeDataUrl && qrImg) {
       qrImg.src = data.qrCodeDataUrl;

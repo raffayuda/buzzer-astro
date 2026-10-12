@@ -290,11 +290,12 @@ app.get('/projector', (req, res) => {
 
 // API Info Jaringan & QR Code (Mendukung Deteksi Otomatis Cloudflare Tunnel / Reverse Proxy / IP Lokal)
 app.get('/api/info', async (req, res) => {
-  let joinUrl = process.env.PUBLIC_URL || '';
+  let joinUrl = req.query.public_url || process.env.PUBLIC_URL || '';
 
   if (!joinUrl) {
     const forwardedHost = req.headers['x-forwarded-host'] || req.headers.host;
     let forwardedProto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const referer = req.headers.referer || '';
 
     // Cloudflare Tunnel header check (cf-visitor / cf-connecting-ip)
     if (req.headers['cf-visitor']) {
@@ -304,7 +305,13 @@ app.get('/api/info', async (req, res) => {
       } catch {}
     }
 
-    if (forwardedHost && !forwardedHost.includes('localhost') && !forwardedHost.includes('127.0.0.1')) {
+    // Jika berjalan di domain produksi (oktaa.my.id / astro) atau diakses via iframe astro, arahkan link peserta ke domain resmi
+    if (
+      (forwardedHost && (forwardedHost.includes('oktaa.my.id') || forwardedHost.includes('astro.nurulfikri.ac.id'))) ||
+      referer.includes('astro.nurulfikri.ac.id')
+    ) {
+      joinUrl = 'https://astro.nurulfikri.ac.id/buzzer';
+    } else if (forwardedHost && !forwardedHost.includes('localhost') && !forwardedHost.includes('127.0.0.1')) {
       joinUrl = `${forwardedProto}://${forwardedHost}`;
     } else {
       joinUrl = `http://${localIp}:${PORT}`;

@@ -700,12 +700,6 @@ body::before {
   gap: 1.1rem;
 }
 
-@media (max-width: 600px) {
-  .action-buttons-row {
-    grid-template-columns: 1fr;
-  }
-}
-
 .btn-ctrl {
   padding: 1.15rem 1.25rem;
   border-radius: var(--radius-md);
@@ -766,12 +760,6 @@ body::before {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 0.85rem;
-}
-
-@media (max-width: 600px) {
-  .sound-board-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .btn-sfx {
@@ -881,6 +869,132 @@ body::before {
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--astro-blue);
+}
+
+/* ==========================================================================
+   RESPONSIVE HOST PANEL MOBILE OPTIMIZATIONS
+   ========================================================================== */
+@media (max-width: 768px) {
+  /* Header Mobile */
+  .app-header {
+    padding: 0.65rem 0.85rem;
+    gap: 0.5rem;
+  }
+  .brand-text {
+    font-size: 0.95rem;
+  }
+  .header-meta {
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  #host-round-pill {
+    padding: 0.25rem 0.55rem !important;
+    font-size: 0.72rem;
+  }
+  #status-pill {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.72rem;
+  }
+  .header-proyektor-link {
+    display: none;
+  }
+
+  /* Host Container Mobile */
+  .host-container {
+    padding: 0.75rem 0.75rem 4rem;
+    gap: 1rem;
+  }
+
+  .host-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .window-card {
+    border-radius: var(--radius-lg);
+  }
+  .window-titlebar {
+    padding: 0.55rem 0.85rem;
+  }
+  .window-body {
+    padding: 1rem 0.85rem !important;
+    gap: 1rem !important;
+  }
+
+  /* Sembunyikan shortcut keyboard di HP agar tampilan ringkas */
+  .host-shortcuts {
+    display: none !important;
+  }
+
+  .control-banner h2 {
+    font-size: 1.15rem !important;
+  }
+  .control-banner p {
+    font-size: 0.78rem !important;
+  }
+
+  /* Action Buttons Mobile: BUKA BEL full width di atas, RESET & KUNCI di bawah */
+  .action-buttons-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+  .btn-unlock {
+    grid-column: span 2;
+    padding: 1.15rem 0.75rem;
+    font-size: 1.05rem;
+  }
+  .btn-reset,
+  .btn-lock {
+    padding: 0.85rem 0.65rem;
+    font-size: 0.85rem;
+  }
+  .btn-ctrl small {
+    display: none; /* Sembunyikan shortcut key hint [Spasi]/[Enter] di HP */
+  }
+
+  /* Soundboard Mobile: TRUTH & LIE berdampingan, Timer di bawah */
+  .sound-board-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+  }
+  .btn-sfx-timer {
+    grid-column: span 2;
+  }
+  .btn-sfx {
+    padding: 0.8rem 0.5rem;
+    font-size: 0.78rem;
+  }
+
+  /* Buzz List Antrean Peserta Mobile */
+  .buzz-item {
+    padding: 0.65rem 0.85rem;
+    gap: 0.5rem;
+  }
+  .buzz-user-info {
+    margin: 0 0.5rem;
+    min-width: 0;
+  }
+  .buzz-user-name {
+    font-size: 0.95rem;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .buzz-delta-time {
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .brand span.brand-text {
+    display: none; /* Hanya logo ASTRO di HP kecil */
+  }
+  .buzz-user-name {
+    max-width: 110px;
+  }
 }
 
 /* ==========================================================================
