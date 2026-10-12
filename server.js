@@ -14,6 +14,8 @@ const PORT = process.env.PORT || 3001;
 
 // Deteksi alamat IP lokal (LAN Wi-Fi) untuk akses smartphone peserta
 function getLocalIpAddress() {
+  if (process.env.HOST_IP) return process.env.HOST_IP;
+
   const interfaces = os.networkInterfaces();
   const candidates = [];
 
@@ -27,9 +29,20 @@ function getLocalIpAddress() {
     }
   }
 
-  // Prioritaskan Wi-Fi / Ethernet LAN nyata (bukan VirtualBox 192.168.56.x)
-  const realLan = candidates.find(c => !c.address.startsWith('192.168.56.'));
-  return realLan ? realLan.address : (candidates[0]?.address || 'localhost');
+  // 1. Cek apakah ada IP spesifik 192.168.123.6
+  const userLan = candidates.find(c => c.address === '192.168.123.6');
+  if (userLan) return userLan.address;
+
+  // 2. Cek subnet 192.168.x.x lainnya (kecuali VirtualBox 192.168.56.x)
+  const standardLan = candidates.find(c => c.address.startsWith('192.168.') && !c.address.startsWith('192.168.56.'));
+  if (standardLan) return standardLan.address;
+
+  // 3. Jika di dalam container docker (10.x / 172.x), fallback ke IP host lokal user
+  const nonDockerLan = candidates.find(c => !c.address.startsWith('10.') && !c.address.startsWith('172.'));
+  if (nonDockerLan) return nonDockerLan.address;
+
+  // Default fallback untuk akses lokal
+  return '192.168.123.6';
 }
 
 const localIp = getLocalIpAddress();
@@ -48,6 +61,7 @@ const state = {
 
 // Inisialisasi Express & HTTP Server
 const app = express();
+app.set('trust proxy', true); // Dukungan Cloudflare Tunnel & Reverse Proxy (X-Forwarded headers)
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -274,14 +288,27 @@ app.get('/projector', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'projector.html'));
 });
 
-// API Info Jaringan & QR Code (Mendukung Deteksi Otomatis Domain Tunnel / Lokal)
+// API Info Jaringan & QR Code (Mendukung Deteksi Otomatis Cloudflare Tunnel / Reverse Proxy / IP Lokal)
 app.get('/api/info', async (req, res) => {
-  const forwardedHost = req.headers['x-forwarded-host'] || req.headers.host;
-  const forwardedProto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  let joinUrl = process.env.PUBLIC_URL || '';
 
-  let joinUrl = `${forwardedProto}://${forwardedHost}`;
-  if (!forwardedHost || forwardedHost.includes('localhost') || forwardedHost.includes('127.0.0.1')) {
-    joinUrl = `http://${localIp}:${PORT}`;
+  if (!joinUrl) {
+    const forwardedHost = req.headers['x-forwarded-host'] || req.headers.host;
+    let forwardedProto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+
+    // Cloudflare Tunnel header check (cf-visitor / cf-connecting-ip)
+    if (req.headers['cf-visitor']) {
+      try {
+        const cfVisitor = JSON.parse(req.headers['cf-visitor']);
+        if (cfVisitor.scheme) forwardedProto = cfVisitor.scheme;
+      } catch {}
+    }
+
+    if (forwardedHost && !forwardedHost.includes('localhost') && !forwardedHost.includes('127.0.0.1')) {
+      joinUrl = `${forwardedProto}://${forwardedHost}`;
+    } else {
+      joinUrl = `http://${localIp}:${PORT}`;
+    }
   }
 
   let qrCodeDataUrl = '';
@@ -322,14 +349,16 @@ app.post('/api/control', (req, res) => {
   return res.json(result);
 });
 
-// Jalankan Server HTTP & WebSocket dalam 1 proses tunggal
+// Jalankan Server HTTP & WebSocket dalam 1 proses tunggal di 0.0.0.0
 server.listen(PORT, '0.0.0.0', () => {
   console.log('====================================================');
-  console.log('ASTRO 2026 BUZZER RUNNING');
+  console.log('ASTRO 2026 BUZZER RUNNING (LISTEN ON 0.0.0.0)');
   console.log('====================================================');
-  console.log(`Sisi Peserta (HP)   : http://${localIp}:${PORT}`);
+  console.log(`Bind Interface     : 0.0.0.0:${PORT} (Menerima semua koneksi)`);
+  console.log(`Akses Lokal / LAN  : http://${localIp}:${PORT}`);
   console.log(`Sisi Host / Juri   : http://${localIp}:${PORT}/host`);
   console.log(`Tampilan Proyektor  : http://${localIp}:${PORT}/projector`);
+  console.log(`Cloudflare Tunnel  : Siap (X-Forwarded & CF-Visitor aktif)`);
   console.log(`Socket.IO Realtime  : AKTIF (Port ${PORT})`);
   console.log('====================================================');
 });
