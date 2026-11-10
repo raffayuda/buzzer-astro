@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Layar Proyektor - Lomba Cerdas Cermat | ASTRO 2026</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=10">
 </head>
 <body class="projector-body">
   <!-- Frutiger Aero Floating Bubbles Background -->
@@ -79,6 +79,14 @@
     </div>
   </main>
 
+  <!-- Papan Skor Peserta (live, animasi saat poin bertambah/berkurang) -->
+  <section id="scoreboard" class="scoreboard" aria-label="Papan Skor" style="display: none;">
+    <div class="scoreboard-head">
+      <span class="scoreboard-title">PAPAN SKOR</span>
+    </div>
+    <div id="scoreboard-grid" class="scoreboard-grid"></div>
+  </section>
+
   <!-- Footer Bar Proyektor (GlassBar) -->
   <footer class="projector-footer">
     <div class="qr-widget">
@@ -104,6 +112,6 @@
   <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/sound.js?v=9"></script>
-  <script src="/js/projector.js?v=9"></script>
+  <script src="/js/projector.js?v=10"></script>
 </body>
 </html>

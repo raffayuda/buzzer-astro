@@ -1346,3 +1346,504 @@ body::before {
   border-radius: var(--radius-full);
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
 }
+
+/* ==========================================================================
+   PAPAN SKOR — PANEL JURI (public/host.html)
+   ========================================================================== */
+.score-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+}
+
+.score-toggle input {
+  accent-color: var(--astro-blue);
+  cursor: pointer;
+}
+
+.score-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.score-add-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.score-add-row .form-input {
+  flex: 1;
+  padding: 0.7rem 1rem;
+}
+
+.score-color-input {
+  width: 48px;
+  min-width: 48px;
+  border: 1.5px solid var(--border-tint);
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  padding: 4px;
+  cursor: pointer;
+}
+
+.btn-score-add {
+  padding: 0 1.25rem;
+  border: none;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--astro-blue) 0%, var(--astro-navy) 100%);
+  color: #ffffff;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: var(--shadow-gloss), var(--shadow-glow-blue);
+}
+
+.score-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.score-setting {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-family: var(--font-subtitle);
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--astro-navy);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.score-setting .form-input {
+  width: 110px;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.95rem;
+}
+
+.score-settings-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.btn-score-muted,
+.btn-score-danger {
+  padding: 0.55rem 0.95rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn-score-muted {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+
+.btn-score-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.team-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.team-list-empty {
+  text-align: center;
+  padding: 1.5rem 1rem;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.85rem;
+  background: #ffffff;
+  border: 1px solid var(--border-tint);
+  border-radius: var(--radius-md);
+  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.04);
+}
+
+.team-order {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.team-move {
+  border: none;
+  background: var(--bg-surface);
+  color: var(--astro-navy);
+  font-size: 0.55rem;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.team-move:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.team-dot {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  border-radius: 50%;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.6), 0 0 0 2px #ffffff, 0 0 0 3px var(--border-tint);
+}
+
+.team-name {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--astro-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-score {
+  min-width: 64px;
+  text-align: right;
+  font-family: var(--font-title);
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: var(--astro-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.team-quick {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.btn-delta {
+  min-width: 42px;
+  height: 34px;
+  padding: 0 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-tint);
+  background: var(--bg-surface);
+  color: var(--astro-navy);
+  font-family: var(--font-heading);
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.btn-delta:active {
+  transform: scale(0.94);
+}
+
+.btn-delta.is-up {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.btn-delta.is-down {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.team-custom {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.team-custom .form-input {
+  width: 84px;
+  height: 34px;
+  padding: 0 0.5rem;
+  font-size: 0.85rem;
+}
+
+.team-remove {
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.team-remove:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Tombol cepat Benar / Salah pada antrean bel */
+.buzz-score-actions {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: 0.75rem;
+}
+
+.btn-quick-score {
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-quick-score.is-up {
+  background: #dcfce7;
+  border: 1px solid #86efac;
+  color: #15803d;
+}
+
+.btn-quick-score.is-down {
+  background: #fee2e2;
+  border: 1px solid #fca5a5;
+  color: #b91c1c;
+}
+
+@media (max-width: 768px) {
+  .team-row {
+    flex-wrap: wrap;
+  }
+  .team-name {
+    flex-basis: calc(100% - 180px);
+  }
+  .team-quick,
+  .team-custom {
+    flex: 1;
+  }
+  .team-quick .btn-delta {
+    flex: 1;
+  }
+  .score-settings-actions {
+    margin-left: 0;
+  }
+  .buzz-item {
+    flex-wrap: wrap;
+  }
+  .buzz-score-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  .buzz-score-actions .btn-quick-score {
+    flex: 1;
+  }
+}
+
+/* ==========================================================================
+   PAPAN SKOR — LAYAR PROYEKTOR (public/projector.html)
+   ========================================================================== */
+body.has-scoreboard .projector-stage {
+  padding: 1.5rem 0;
+  gap: 1.5rem;
+}
+
+.scoreboard {
+  position: relative;
+  z-index: 10;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.scoreboard-head {
+  display: flex;
+  justify-content: center;
+}
+
+.scoreboard-title {
+  font-family: var(--font-subtitle);
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--astro-navy);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--border-tint);
+  border-radius: var(--radius-full);
+  padding: 0.3rem 1.1rem;
+  box-shadow: var(--shadow-gloss);
+}
+
+.scoreboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1rem;
+}
+
+.score-card {
+  --team-color: #3b82f6;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1rem 1rem 0.9rem;
+  background: rgba(255, 255, 255, 0.96);
+  border: 2px solid var(--border-tint);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-gloss), var(--shadow-soft);
+}
+
+.score-card-bar {
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 5px;
+  border-radius: 0 0 6px 6px;
+  background: var(--team-color);
+}
+
+.score-card-name {
+  max-width: 100%;
+  font-family: var(--font-heading);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--astro-navy);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.score-card-value {
+  font-family: var(--font-title);
+  font-size: 3.1rem;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--astro-navy);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.score-card-leader {
+  position: absolute;
+  top: -11px;
+  right: 12px;
+  display: none;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #facc15 0%, #eab308 100%);
+  color: #78350f;
+  font-family: var(--font-subtitle);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  box-shadow: var(--shadow-gloss), 0 2px 6px rgba(234, 179, 8, 0.35);
+}
+
+.score-card.is-leader {
+  border-color: #facc15;
+  box-shadow: var(--shadow-gloss), 0 10px 28px rgba(245, 158, 11, 0.25);
+}
+
+.score-card.is-leader .score-card-leader {
+  display: inline-block;
+}
+
+.score-card.pulse-up {
+  animation: scorePulseUp 1.1s ease;
+}
+
+.score-card.pulse-down {
+  animation: scorePulseDown 1.1s ease;
+}
+
+@keyframes scorePulseUp {
+  0% { transform: scale(1); }
+  20% { transform: scale(1.07); border-color: #10b981; }
+  100% { transform: scale(1); }
+}
+
+@keyframes scorePulseDown {
+  0% { transform: translateX(0); }
+  15% { transform: translateX(-6px); border-color: #e11d48; }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
+
+.score-delta-chip {
+  position: absolute;
+  top: -0.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.3rem 0.95rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-title);
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #ffffff;
+  pointer-events: none;
+  box-shadow: var(--shadow-gloss), 0 8px 20px rgba(30, 58, 138, 0.25);
+  animation: scoreDeltaFloat 1.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  z-index: 5;
+}
+
+.score-delta-chip.is-up {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+}
+
+.score-delta-chip.is-down {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+}
+
+@keyframes scoreDeltaFloat {
+  0% { opacity: 0; transform: translate(-50%, 20px) scale(0.6); }
+  15% { opacity: 1; transform: translate(-50%, -18px) scale(1.15); }
+  30% { transform: translate(-50%, -24px) scale(1); }
+  75% { opacity: 1; transform: translate(-50%, -38px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -56px) scale(0.95); }
+}
+
+@keyframes scoreDeltaFade {
+  0%, 80% { opacity: 1; transform: translate(-50%, -24px); }
+  100% { opacity: 0; transform: translate(-50%, -24px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .score-card.pulse-up,
+  .score-card.pulse-down {
+    animation: none;
+  }
+  .score-delta-chip {
+    animation-name: scoreDeltaFade;
+  }
+}
+
+/* Kolom kiri panel juri: antrean bel + papan skor */
+.host-main-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  min-width: 0;
+}
