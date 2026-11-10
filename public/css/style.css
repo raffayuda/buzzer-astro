@@ -1794,9 +1794,8 @@ body.has-scoreboard .projector-stage {
 
 .score-delta-chip {
   position: absolute;
-  top: -0.4rem;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 1.6rem;
+  right: 0.9rem;
   padding: 0.3rem 0.95rem;
   border-radius: var(--radius-full);
   font-family: var(--font-title);
@@ -1817,17 +1816,18 @@ body.has-scoreboard .projector-stage {
   background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
 }
 
+/* Chip melayang di dalam kartu (sisi kanan) agar tidak menutupi judul papan skor */
 @keyframes scoreDeltaFloat {
-  0% { opacity: 0; transform: translate(-50%, 20px) scale(0.6); }
-  15% { opacity: 1; transform: translate(-50%, -18px) scale(1.15); }
-  30% { transform: translate(-50%, -24px) scale(1); }
-  75% { opacity: 1; transform: translate(-50%, -38px) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -56px) scale(0.95); }
+  0% { opacity: 0; transform: translateY(16px) scale(0.6); }
+  15% { opacity: 1; transform: translateY(0) scale(1.15); }
+  30% { transform: translateY(-2px) scale(1); }
+  75% { opacity: 1; transform: translateY(-8px) scale(1); }
+  100% { opacity: 0; transform: translateY(-16px) scale(0.95); }
 }
 
 @keyframes scoreDeltaFade {
-  0%, 80% { opacity: 1; transform: translate(-50%, -24px); }
-  100% { opacity: 0; transform: translate(-50%, -24px); }
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1846,4 +1846,381 @@ body.has-scoreboard .projector-stage {
   flex-direction: column;
   gap: 1.75rem;
   min-width: 0;
+}
+
+/* ==========================================================================
+   LOGIN PIN JURI (host.html)
+   ========================================================================== */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(30, 58, 138, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  text-align: center;
+}
+
+.login-body h2 {
+  font-family: var(--font-title);
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--astro-navy);
+}
+
+.login-body p {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.login-body code {
+  background: var(--bg-surface);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.82rem;
+}
+
+.login-body .form-input {
+  text-align: center;
+  font-size: 1.3rem;
+  letter-spacing: 0.3em;
+}
+
+.login-error {
+  min-height: 1.2em;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.judge-hint {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: -0.2rem 0 0.7rem;
+}
+
+/* Status penilaian di antrean bel (host) */
+.buzz-item.is-judged-correct {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+
+.buzz-item.is-judged-wrong {
+  border-color: #fca5a5;
+  background: #fff1f2;
+}
+
+.judge-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.7rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-heading);
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.judge-badge.is-up {
+  background: #059669;
+  color: #ffffff;
+}
+
+.judge-badge.is-down {
+  background: #e11d48;
+  color: #ffffff;
+}
+
+.btn-quick-score.is-muted {
+  background: #ffffff;
+  border: 1px solid var(--border-tint);
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   PROYEKTOR — aturan poin & badge penilaian
+   ========================================================================== */
+.scoreboard-head {
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.scoreboard-rule {
+  font-family: var(--font-subtitle);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0.9rem;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-gloss);
+}
+
+.scoreboard-rule.is-up {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.scoreboard-rule.is-down {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+}
+
+.verdict-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 1.4rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-subtitle);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+  box-shadow: var(--shadow-gloss), 0 4px 12px rgba(30, 58, 138, 0.15);
+  animation: popChampion 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.verdict-badge.is-up {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+}
+
+.verdict-badge.is-down {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+}
+
+.verdict-badge.verdict-sm {
+  font-size: 0.78rem;
+  padding: 0.25rem 0.75rem;
+}
+
+/* ==========================================================================
+   PESERTA (index.html) — pilih tim, skor, aturan, notifikasi penilaian
+   ========================================================================== */
+.reg-notice {
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-md);
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.team-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.6rem;
+}
+
+.team-pick {
+  --team-color: #3b82f6;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 52px;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-tint);
+  background: #ffffff;
+  color: var(--astro-navy);
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.team-pick:active {
+  transform: scale(0.97);
+}
+
+.team-pick.selected {
+  border-color: var(--team-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--team-color) 25%, transparent);
+}
+
+.team-pick-dot {
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  border-radius: 50%;
+  background: var(--team-color);
+}
+
+.team-pick-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cta-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.profile-score {
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  background: var(--astro-navy);
+  color: #ffffff;
+  font-family: var(--font-heading);
+  font-size: 0.8rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.verdict-banner {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  font-family: var(--font-title);
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #ffffff;
+  text-align: center;
+  box-shadow: var(--shadow-gloss), 0 8px 20px rgba(30, 58, 138, 0.18);
+  animation: popChampion 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.verdict-banner.is-up {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+}
+
+.verdict-banner.is-down {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 100%);
+}
+
+.verdict-banner.is-neutral {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+.info-card {
+  width: 100%;
+}
+
+.p-score-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.p-score-row {
+  --team-color: #3b82f6;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-md);
+  background: #ffffff;
+  border: 1px solid var(--border-tint);
+}
+
+.p-score-row.is-me {
+  border: 2px solid var(--team-color);
+  background: color-mix(in srgb, var(--team-color) 8%, #ffffff);
+}
+
+.p-score-rank {
+  min-width: 2rem;
+  font-family: var(--font-title);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--astro-blue);
+}
+
+.p-score-dot {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  border-radius: 50%;
+  background: var(--team-color);
+}
+
+.p-score-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--astro-navy);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p-score-value {
+  font-family: var(--font-title);
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: var(--astro-navy);
+  font-variant-numeric: tabular-nums;
+}
+
+.rules-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  text-align: left;
+}
+
+.rule-item {
+  position: relative;
+  padding: 0.55rem 0.8rem 0.55rem 2.1rem;
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-ink);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.rule-item::before {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.55rem;
+  font-weight: 900;
+}
+
+.rule-up {
+  background: #f0fdf4;
+}
+
+.rule-up::before {
+  content: '✓';
+  color: #059669;
+}
+
+.rule-down {
+  background: #fff1f2;
+}
+
+.rule-down::before {
+  content: '✗';
+  color: #e11d48;
+}
+
+.rule-info::before {
+  content: '•';
+  color: var(--astro-blue);
 }

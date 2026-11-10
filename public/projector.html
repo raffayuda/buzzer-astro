@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Layar Proyektor - Lomba Cerdas Cermat | ASTRO 2026</title>
-  <link rel="stylesheet" href="/css/style.css?v=10">
+  <link rel="stylesheet" href="/css/style.css?v=11">
 </head>
 <body class="projector-body">
   <!-- Frutiger Aero Floating Bubbles Background -->
@@ -53,6 +53,7 @@
         <div id="champion-name" class="champion-name">
           -
         </div>
+        <span id="champion-verdict" class="verdict-badge" style="display: none;"></span>
         <div class="champion-time-badge">
           WAKTU TERCEPAT (0 ms)
         </div>
@@ -64,6 +65,7 @@
           <div style="display: flex; align-items: center; gap: 0.85rem;">
             <span class="runner-rank">#2</span>
             <span id="runner-2-name" class="runner-name">-</span>
+            <span id="runner-2-verdict" class="verdict-badge verdict-sm" style="display: none;"></span>
           </div>
           <span id="runner-2-delta" class="runner-delta">+0.000s</span>
         </div>
@@ -72,6 +74,7 @@
           <div style="display: flex; align-items: center; gap: 0.85rem;">
             <span class="runner-rank">#3</span>
             <span id="runner-3-name" class="runner-name">-</span>
+            <span id="runner-3-verdict" class="verdict-badge verdict-sm" style="display: none;"></span>
           </div>
           <span id="runner-3-delta" class="runner-delta">+0.000s</span>
         </div>
@@ -82,7 +85,9 @@
   <!-- Papan Skor Peserta (live, animasi saat poin bertambah/berkurang) -->
   <section id="scoreboard" class="scoreboard" aria-label="Papan Skor" style="display: none;">
     <div class="scoreboard-head">
+      <span class="scoreboard-rule is-up">BENAR <strong id="rule-correct">+10</strong></span>
       <span class="scoreboard-title">PAPAN SKOR</span>
+      <span class="scoreboard-rule is-down">SALAH <strong id="rule-wrong">−5</strong></span>
     </div>
     <div id="scoreboard-grid" class="scoreboard-grid"></div>
   </section>
@@ -112,6 +117,7 @@
   <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/sound.js?v=9"></script>
-  <script src="/js/projector.js?v=10"></script>
+  <script src="/js/host-auth.js?v=11"></script>
+  <script src="/js/projector.js?v=11"></script>
 </body>
 </html>
