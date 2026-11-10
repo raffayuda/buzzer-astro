@@ -31,3 +31,6 @@ desktop.ini
 .temp/
 tmp/
 .cache/
+
+# Data runtime papan skor
+data/

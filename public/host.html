@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Juri - Buzzer Lomba | ASTRO 2026</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=10">
 </head>
 <body>
   <!-- Frutiger Aero Floating Bubbles Background -->
@@ -100,24 +100,66 @@
 
     <!-- Grid: Antrean vs Pengaturan -->
     <div class="host-grid">
-      <!-- Kolom Kiri: Antrean Pemenang Bel (WindowCard) -->
-      <section class="window-card queue-card">
-        <div class="window-titlebar">
-          <div class="window-dot-group">
-            <span class="window-close-dot"></span>
-            <span class="window-title">ANTREAN PESERTA</span>
+      <!-- Kolom Kiri: Antrean Bel + Papan Skor -->
+      <div class="host-main-col">
+        <!-- Kolom Kiri: Antrean Pemenang Bel (WindowCard) -->
+        <section class="window-card queue-card">
+          <div class="window-titlebar">
+            <div class="window-dot-group">
+              <span class="window-close-dot"></span>
+              <span class="window-title">ANTREAN PESERTA</span>
+            </div>
+            <span id="queue-count" class="astro-pill pill-white" style="font-size: 0.68rem; padding: 0.25rem 0.75rem;">0 Peserta</span>
           </div>
-          <span id="queue-count" class="astro-pill pill-white" style="font-size: 0.68rem; padding: 0.25rem 0.75rem;">0 Peserta</span>
-        </div>
 
-        <div class="window-body">
-          <div id="buzz-list" class="buzz-list">
-            <div id="empty-queue" style="text-align: center; padding: 3rem 1rem; color: var(--text-dim); font-size: 0.95rem;">
-              Belum ada bel yang ditekan.<br>Klik <strong style="color: var(--astro-blue);">"Buka Bel (Start)"</strong> agar peserta dapat berebut menjawab.
+          <div class="window-body">
+            <div id="buzz-list" class="buzz-list">
+              <div id="empty-queue" style="text-align: center; padding: 3rem 1rem; color: var(--text-dim); font-size: 0.95rem;">
+                Belum ada bel yang ditekan.<br>Klik <strong style="color: var(--astro-blue);">"Buka Bel (Start)"</strong> agar peserta dapat berebut menjawab.
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <!-- Papan Skor Peserta (WindowCard) -->
+        <section class="window-card">
+          <div class="window-titlebar">
+            <div class="window-dot-group">
+              <span class="window-close-dot"></span>
+              <span class="window-title">PAPAN SKOR PESERTA</span>
+            </div>
+            <label class="astro-pill pill-white score-toggle" title="Tampilkan / sembunyikan papan skor di layar proyektor [S di proyektor]">
+              <input type="checkbox" id="setting-show-scoreboard" checked>
+              <span>Tampil di Proyektor</span>
+            </label>
+          </div>
+
+          <div class="window-body score-panel">
+            <form id="team-add-form" class="score-add-row" autocomplete="off">
+              <input type="color" id="team-color" class="score-color-input" value="#3b82f6" title="Warna tim">
+              <input type="text" id="team-name" class="form-input" placeholder="Nama tim / peserta (mis. Tim A — SMAN 1)" maxlength="40" required>
+              <button type="submit" class="btn-score-add">+ Tambah Tim</button>
+            </form>
+
+            <div class="score-settings-row">
+              <label class="score-setting">
+                <span>Poin Benar</span>
+                <input type="number" id="setting-points-correct" class="form-input" value="10" step="1">
+              </label>
+              <label class="score-setting">
+                <span>Poin Salah</span>
+                <input type="number" id="setting-points-wrong" class="form-input" value="-5" step="1">
+              </label>
+              <div class="score-settings-actions">
+                <button type="button" id="btn-score-reset" class="btn-score-muted">Nolkan Semua Skor</button>
+                <button type="button" id="btn-teams-clear" class="btn-score-danger">Hapus Semua Tim</button>
+              </div>
+            </div>
+
+            <div id="team-list" class="team-list"></div>
+          </div>
+        </section>
+      </div>
 
       <!-- Kolom Kanan: Pengaturan & QR Code -->
       <section style="display: flex; flex-direction: column; gap: 1.75rem;">
@@ -199,6 +241,6 @@
   <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/sound.js?v=9"></script>
-  <script src="/js/host.js?v=9"></script>
+  <script src="/js/host.js?v=10"></script>
 </body>
 </html>

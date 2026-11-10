@@ -5,6 +5,7 @@ import os from 'os';
 import path from 'path';
 import http from 'http';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { Server } from 'socket.io';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,12 +53,118 @@ const state = {
   status: 'LOCKED', // 'LOCKED' | 'ACTIVE' | 'BUZZED'
   round: 1,
   buzzList: [],
-  scores: {},
+  // Papan skor peserta/tim: [{ id, name, color, score }] (urutan tetap sesuai urutan input)
+  teams: [],
   settings: {
     mode: 'all', // 'all' (semua urutan) | 'first_only' (kunci langsung setelah #1)
-    timerSeconds: 5
+    timerSeconds: 5,
+    showScoreboard: true, // tampilkan papan skor di layar proyektor
+    pointsCorrect: 10, // poin default jawaban benar (tombol cepat di antrean)
+    pointsWrong: -5 // poin default jawaban salah (tombol cepat di antrean)
   }
 };
+
+// ---------------------------------------------------------------------------
+// Persistensi Papan Skor (agar skor tidak hilang jika server restart)
+// ---------------------------------------------------------------------------
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+const SCORE_FILE = path.join(DATA_DIR, 'scoreboard.json');
+const MAX_TEAMS = 30;
+const MAX_NAME_LENGTH = 40;
+const MAX_ABS_DELTA = 10000;
+
+function makeId() {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function sanitizeColor(color) {
+  return typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#3b82f6';
+}
+
+function sanitizeSettings(payload) {
+  const out = {};
+  if (payload.mode === 'all' || payload.mode === 'first_only') out.mode = payload.mode;
+  const timer = parseInt(payload.timerSeconds);
+  if (!isNaN(timer) && timer > 0 && timer <= 120) out.timerSeconds = timer;
+  if (typeof payload.showScoreboard === 'boolean') out.showScoreboard = payload.showScoreboard;
+  const pc = Number(payload.pointsCorrect);
+  if (payload.pointsCorrect !== undefined && Number.isFinite(pc) && Math.abs(pc) <= MAX_ABS_DELTA) out.pointsCorrect = pc;
+  const pw = Number(payload.pointsWrong);
+  if (payload.pointsWrong !== undefined && Number.isFinite(pw) && Math.abs(pw) <= MAX_ABS_DELTA) out.pointsWrong = pw;
+  return out;
+}
+
+function loadScoreboard() {
+  try {
+    if (!fs.existsSync(SCORE_FILE)) return;
+    const saved = JSON.parse(fs.readFileSync(SCORE_FILE, 'utf-8'));
+    if (Array.isArray(saved.teams)) {
+      state.teams = saved.teams
+        .filter(t => t && typeof t.name === 'string' && t.name.trim())
+        .slice(0, MAX_TEAMS)
+        .map(t => ({
+          id: String(t.id || makeId()),
+          name: t.name.trim().slice(0, MAX_NAME_LENGTH),
+          color: sanitizeColor(t.color),
+          score: Number.isFinite(Number(t.score)) ? Number(t.score) : 0
+        }));
+    }
+    if (saved.settings && typeof saved.settings === 'object') {
+      state.settings = { ...state.settings, ...sanitizeSettings(saved.settings) };
+    }
+    console.log(`Papan skor dimuat: ${state.teams.length} tim (${SCORE_FILE})`);
+  } catch (err) {
+    console.error('Gagal memuat papan skor:', err.message);
+  }
+}
+
+let saveTimeout = null;
+function saveScoreboard() {
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      const tmp = `${SCORE_FILE}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify({ teams: state.teams, settings: state.settings }, null, 2));
+      fs.renameSync(tmp, SCORE_FILE);
+    } catch (err) {
+      console.error('Gagal menyimpan papan skor:', err.message);
+    }
+  }, 150);
+}
+
+function findTeam({ id, name } = {}) {
+  if (id) {
+    const byId = state.teams.find(t => t.id === id);
+    if (byId) return byId;
+  }
+  if (typeof name === 'string' && name.trim()) {
+    const key = name.trim().toLowerCase();
+    return state.teams.find(t => t.name.toLowerCase() === key) || null;
+  }
+  return null;
+}
+
+function addTeam(name, color) {
+  const cleanName = typeof name === 'string' ? name.trim().slice(0, MAX_NAME_LENGTH) : '';
+  if (!cleanName) return { error: 'Nama tim wajib diisi' };
+  if (findTeam({ name: cleanName })) return { error: `Tim "${cleanName}" sudah ada` };
+  if (state.teams.length >= MAX_TEAMS) return { error: `Maksimal ${MAX_TEAMS} tim` };
+  const team = { id: makeId(), name: cleanName, color: sanitizeColor(color), score: 0 };
+  state.teams.push(team);
+  return { team };
+}
+
+function broadcastScores(change = null) {
+  saveScoreboard();
+  broadcast({
+    type: 'SCORE_UPDATE',
+    teams: state.teams,
+    change
+  });
+}
+
+loadScoreboard();
 
 // Inisialisasi Express & HTTP Server
 const app = express();
@@ -230,19 +337,75 @@ function handleControl(action, payload = {}) {
       });
       break;
 
-    case 'score':
-      if (payload && payload.name) {
-        state.scores[payload.name] = (state.scores[payload.name] || 0) + (payload.delta || 0);
-        broadcast({
-          type: 'SCORE_UPDATE',
-          scores: state.scores
-        });
+    case 'score': {
+      // payload: { id?, name?, color?, delta } — jika tim belum ada & name diberikan, tim dibuat otomatis
+      const delta = Number(payload && payload.delta);
+      if (!Number.isFinite(delta) || delta === 0 || Math.abs(delta) > MAX_ABS_DELTA) {
+        return { success: false, error: 'Nilai poin tidak valid' };
       }
+      let team = findTeam(payload || {});
+      if (!team) {
+        if (!payload || !payload.name) return { success: false, error: 'Tim tidak ditemukan' };
+        const created = addTeam(payload.name, payload.color);
+        if (created.error) return { success: false, error: created.error };
+        team = created.team;
+      }
+      team.score += delta;
+      broadcastScores({ id: team.id, delta });
+      break;
+    }
+
+    case 'score-set': {
+      const team = findTeam({ id: payload && payload.id });
+      const value = Number(payload && payload.score);
+      if (!team) return { success: false, error: 'Tim tidak ditemukan' };
+      if (payload.score === '' || !Number.isFinite(value) || Math.abs(value) > 1000000) {
+        return { success: false, error: 'Nilai skor tidak valid' };
+      }
+      const delta = value - team.score;
+      team.score = value;
+      broadcastScores(delta !== 0 ? { id: team.id, delta } : null);
+      break;
+    }
+
+    case 'team-add': {
+      const created = addTeam(payload && payload.name, payload && payload.color);
+      if (created.error) return { success: false, error: created.error };
+      broadcastScores();
+      break;
+    }
+
+    case 'team-move': {
+      const idx = state.teams.findIndex(t => t.id === (payload && payload.id));
+      const target = idx + (payload && payload.direction === 'up' ? -1 : 1);
+      if (idx === -1 || target < 0 || target >= state.teams.length) break;
+      [state.teams[idx], state.teams[target]] = [state.teams[target], state.teams[idx]];
+      broadcastScores();
+      break;
+    }
+
+    case 'team-remove': {
+      const before = state.teams.length;
+      state.teams = state.teams.filter(t => t.id !== (payload && payload.id));
+      if (state.teams.length === before) return { success: false, error: 'Tim tidak ditemukan' };
+      broadcastScores();
+      break;
+    }
+
+    case 'score-reset':
+      state.teams.forEach(t => { t.score = 0; });
+      broadcastScores();
+      break;
+
+    case 'teams-clear':
+      state.teams = [];
+      broadcastScores();
       break;
 
     case 'settings':
       if (payload) {
-        state.settings = { ...state.settings, ...payload };
+        state.settings = { ...state.settings, ...sanitizeSettings(payload) };
+        saveScoreboard();
         broadcast({
           type: 'SETTINGS_UPDATE',
           settings: state.settings

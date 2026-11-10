@@ -7,7 +7,9 @@ let socket = null;
 let projectorState = {
   status: 'LOCKED',
   buzzList: [],
-  round: 1
+  round: 1,
+  teams: [],
+  settings: { showScoreboard: true }
 };
 let timerInterval = null;
 
@@ -94,6 +96,7 @@ async function fetchInfo() {
     if (data.state) {
       projectorState = data.state;
       renderProjector();
+      renderScoreboard();
     }
   } catch (err) {
     console.error('Gagal mengambil info:', err);
@@ -113,6 +116,7 @@ function handleProjectorEvent(event) {
       }
       projectorState = event.state;
       renderProjector();
+      renderScoreboard();
       if (event.soundTrigger === 'unlock') {
         window.soundEngine.playUnlock();
         showFeedbackFlash('BEL DIBUKA (START)', '#10b981');
@@ -147,7 +151,120 @@ function handleProjectorEvent(event) {
     case 'TIMER_START':
       startTimer(event.seconds || 5);
       break;
+
+    case 'SCORE_UPDATE':
+      projectorState.teams = event.teams || [];
+      renderScoreboard(event.change);
+      break;
+
+    case 'SETTINGS_UPDATE':
+      projectorState.settings = event.settings || projectorState.settings;
+      renderScoreboard();
+      break;
   }
+}
+
+// 4b. Papan Skor Peserta
+const scoreboardEl = document.getElementById('scoreboard');
+const scoreboardGrid = document.getElementById('scoreboard-grid');
+const scoreCards = new Map(); // id -> { el, nameEl, scoreEl, shown, anim }
+
+function renderScoreboard(change = null) {
+  if (!scoreboardEl || !scoreboardGrid) return;
+  const teams = projectorState.teams || [];
+  const visible = (projectorState.settings?.showScoreboard !== false) && teams.length > 0;
+  scoreboardEl.style.display = visible ? 'flex' : 'none';
+  document.body.classList.toggle('has-scoreboard', visible);
+
+  // Hapus kartu tim yang sudah tidak ada
+  const ids = new Set(teams.map(t => t.id));
+  for (const [id, card] of scoreCards) {
+    if (!ids.has(id)) {
+      card.el.remove();
+      scoreCards.delete(id);
+    }
+  }
+
+  const maxScore = teams.length ? Math.max(...teams.map(t => t.score)) : 0;
+  const leaderCount = teams.filter(t => t.score === maxScore).length;
+
+  teams.forEach((team, index) => {
+    let card = scoreCards.get(team.id);
+    if (!card) {
+      const el = document.createElement('div');
+      el.className = 'score-card';
+      el.innerHTML = `
+        <span class="score-card-bar"></span>
+        <span class="score-card-leader">TERATAS</span>
+        <span class="score-card-name"></span>
+        <span class="score-card-value">0</span>
+      `;
+      card = {
+        el,
+        nameEl: el.querySelector('.score-card-name'),
+        scoreEl: el.querySelector('.score-card-value'),
+        shown: team.score,
+        current: team.score,
+        anim: null
+      };
+      card.scoreEl.textContent = formatScore(team.score);
+      scoreCards.set(team.id, card);
+    }
+
+    // Jaga urutan DOM sesuai urutan tim dari server
+    if (scoreboardGrid.children[index] !== card.el) {
+      scoreboardGrid.insertBefore(card.el, scoreboardGrid.children[index] || null);
+    }
+
+    card.el.style.setProperty('--team-color', team.color || '#3b82f6');
+    card.nameEl.textContent = team.name;
+    card.el.classList.toggle('is-leader', maxScore > 0 && team.score === maxScore && leaderCount < teams.length);
+
+    if (card.shown !== team.score) {
+      animateScore(card, team.score);
+    }
+  });
+
+  if (change && change.delta) {
+    const card = scoreCards.get(change.id);
+    if (card) showScoreDelta(card, change.delta);
+  }
+}
+
+function formatScore(value) {
+  return Math.round(value).toLocaleString('id-ID');
+}
+
+// Animasi angka berjalan dari angka yang sedang tampil ke skor baru
+function animateScore(card, target) {
+  if (card.anim) cancelAnimationFrame(card.anim);
+  const from = card.current;
+  const duration = 900;
+  const start = performance.now();
+  card.shown = target;
+
+  const step = (now) => {
+    const t = Math.min(1, (now - start) / duration);
+    const eased = 1 - Math.pow(1 - t, 3);
+    card.current = from + (target - from) * eased;
+    card.scoreEl.textContent = formatScore(card.current);
+    card.anim = t < 1 ? requestAnimationFrame(step) : null;
+  };
+  card.anim = requestAnimationFrame(step);
+}
+
+// Chip "+10" / "-5" melayang di atas kartu + efek denyut warna
+function showScoreDelta(card, delta) {
+  const positive = delta > 0;
+  const chip = document.createElement('span');
+  chip.className = `score-delta-chip ${positive ? 'is-up' : 'is-down'}`;
+  chip.textContent = `${positive ? '+' : '−'}${formatScore(Math.abs(delta))}`;
+  card.el.appendChild(chip);
+  setTimeout(() => chip.remove(), 1800);
+
+  card.el.classList.remove('pulse-up', 'pulse-down');
+  void card.el.offsetWidth; // restart animasi
+  card.el.classList.add(positive ? 'pulse-up' : 'pulse-down');
 }
 
 // 4. Render Tampilan Proyektor Sesuai State
@@ -343,6 +460,10 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     sendControl('reset-round');
     showFeedbackFlash('RONDE DI-RESET KE 1', '#3b82f6');
+  } else if (e.key === 's' || e.key === 'S') {
+    e.preventDefault();
+    const show = projectorState.settings?.showScoreboard === false;
+    sendControl('settings', { showScoreboard: show });
   }
 });
 
