@@ -6,6 +6,7 @@ import path from 'path';
 import http from 'http';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import crypto from 'crypto';
 import { Server } from 'socket.io';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -48,6 +49,62 @@ function getLocalIpAddress() {
 
 const localIp = getLocalIpAddress();
 
+// ---------------------------------------------------------------------------
+// PIN Juri — wajib untuk semua aksi kontrol (buka bel, penilaian, skor, pengaturan).
+// Set lewat env HOST_PIN. Jika kosong, PIN acak 6 digit dibuat & dicetak di log saat start.
+// ---------------------------------------------------------------------------
+const HOST_PIN_FROM_ENV = (process.env.HOST_PIN || '').trim();
+const HOST_PIN = HOST_PIN_FROM_ENV || String(crypto.randomInt(100000, 1000000));
+const HOST_PIN_HASH = crypto.createHash('sha256').update(HOST_PIN).digest();
+const AUTH_MAX_FAILS = 8;
+const AUTH_WINDOW_MS = 5 * 60 * 1000;
+const authFailures = new Map(); // ip -> { count, resetAt }
+
+function isValidPin(pin) {
+  if (typeof pin !== 'string' || !pin.trim()) return false;
+  const hash = crypto.createHash('sha256').update(pin.trim()).digest();
+  return crypto.timingSafeEqual(hash, HOST_PIN_HASH);
+}
+
+// Cek PIN dengan pembatasan percobaan per IP (anti tebak PIN)
+function checkPin(ip, pin) {
+  const now = Date.now();
+  const entry = authFailures.get(ip);
+  if (entry && now > entry.resetAt) authFailures.delete(ip);
+  const current = authFailures.get(ip);
+  if (current && current.count >= AUTH_MAX_FAILS) {
+    return { ok: false, error: 'Terlalu banyak percobaan PIN salah. Coba lagi dalam beberapa menit.' };
+  }
+  if (isValidPin(pin)) {
+    authFailures.delete(ip);
+    return { ok: true };
+  }
+  const next = current || { count: 0, resetAt: now + AUTH_WINDOW_MS };
+  next.count += 1;
+  authFailures.set(ip, next);
+  return { ok: false, error: 'PIN juri salah' };
+}
+
+// Token sesi juri: diberikan setelah PIN benar, dipakai saat reconnect/reload.
+// Jadi pembatasan percobaan PIN tidak pernah mengunci juri yang sudah login.
+const hostTokens = new Set();
+
+function issueHostToken() {
+  const token = crypto.randomBytes(24).toString('hex');
+  hostTokens.add(token);
+  return token;
+}
+
+function isValidHostToken(token) {
+  return typeof token === 'string' && token.length === 48 && hostTokens.has(token);
+}
+
+function socketIp(socket) {
+  const headers = socket.handshake.headers || {};
+  const forwarded = headers['cf-connecting-ip'] || (headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwarded || socket.handshake.address || 'unknown';
+}
+
 // State Global Buzzer
 const state = {
   status: 'LOCKED', // 'LOCKED' | 'ACTIVE' | 'BUZZED'
@@ -84,13 +141,18 @@ function sanitizeColor(color) {
 function sanitizeSettings(payload) {
   const out = {};
   if (payload.mode === 'all' || payload.mode === 'first_only') out.mode = payload.mode;
-  const timer = parseInt(payload.timerSeconds);
-  if (!isNaN(timer) && timer > 0 && timer <= 120) out.timerSeconds = timer;
+  const timer = Number(payload.timerSeconds);
+  if (Number.isInteger(timer) && timer > 0 && timer <= 120) out.timerSeconds = timer;
   if (typeof payload.showScoreboard === 'boolean') out.showScoreboard = payload.showScoreboard;
+  // Poin benar: bilangan bulat 0..MAX. Poin salah: bilangan bulat -MAX..0 (0 = tanpa pengurangan).
   const pc = Number(payload.pointsCorrect);
-  if (payload.pointsCorrect !== undefined && Number.isFinite(pc) && Math.abs(pc) <= MAX_ABS_DELTA) out.pointsCorrect = pc;
+  if (payload.pointsCorrect !== undefined && payload.pointsCorrect !== '' && Number.isInteger(pc) && pc >= 0 && pc <= MAX_ABS_DELTA) {
+    out.pointsCorrect = pc;
+  }
   const pw = Number(payload.pointsWrong);
-  if (payload.pointsWrong !== undefined && Number.isFinite(pw) && Math.abs(pw) <= MAX_ABS_DELTA) out.pointsWrong = pw;
+  if (payload.pointsWrong !== undefined && payload.pointsWrong !== '' && Number.isInteger(pw) && pw <= 0 && pw >= -MAX_ABS_DELTA) {
+    out.pointsWrong = pw;
+  }
   return out;
 }
 
@@ -160,7 +222,18 @@ function broadcastScores(change = null) {
   broadcast({
     type: 'SCORE_UPDATE',
     teams: state.teams,
+    buzzList: state.buzzList,
     change
+  });
+}
+
+// Lepas status penilaian di antrean (dipakai saat skor di-nol-kan / tim dihapus)
+function clearJudgements(teamId = null) {
+  state.buzzList.forEach(b => {
+    if (teamId === null || b.teamId === teamId) {
+      b.judged = null;
+      b.judgedDelta = 0;
+    }
   });
 }
 
@@ -190,10 +263,25 @@ function broadcast(eventData) {
 }
 
 // Logika Pemrosesan Tekan Bel (Buzzer Press)
-function handleBuzz({ id, name, color }) {
-  if (!name || !name.trim()) {
+function handleBuzz({ id, name, color, teamId } = {}) {
+  let cleanName = typeof name === 'string' ? name.trim().slice(0, MAX_NAME_LENGTH) : '';
+  let cleanColor = sanitizeColor(color);
+  let team = null;
+
+  // Jika panitia sudah mendaftarkan tim, hanya tim terdaftar yang boleh memencet bel
+  if (state.teams.length > 0) {
+    team = findTeam({ id: typeof teamId === 'string' ? teamId : null, name: cleanName });
+    if (!team) {
+      return { success: false, code: 'TEAM_NOT_FOUND', error: 'Tim tidak terdaftar. Pilih tim Anda dari daftar.' };
+    }
+    cleanName = team.name;
+    cleanColor = team.color;
+  }
+
+  if (!cleanName) {
     return { success: false, error: 'Nama peserta wajib diisi' };
   }
+  const cleanId = typeof id === 'string' && id ? id.slice(0, 64) : null;
 
   // Jika bel belum dibuka atau sudah selesai (pada mode first_only)
   if (state.status === 'LOCKED') {
@@ -206,7 +294,7 @@ function handleBuzz({ id, name, color }) {
 
   // Cek apakah peserta ini sudah menekan bel di ronde ini
   const existingIndex = state.buzzList.findIndex(
-    item => item.id === id || item.name.toLowerCase() === name.trim().toLowerCase()
+    item => (cleanId && item.id === cleanId) || item.name.toLowerCase() === cleanName.toLowerCase()
   );
   if (existingIndex !== -1) {
     return {
@@ -223,11 +311,14 @@ function handleBuzz({ id, name, color }) {
 
   const buzzRecord = {
     rank,
-    id: id || `${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-    name: name.trim(),
-    color: color || '#ef4444',
+    id: cleanId || `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    teamId: team ? team.id : null,
+    name: cleanName,
+    color: cleanColor,
     time: now,
-    deltaMs
+    deltaMs,
+    judged: null, // null | 'correct' | 'wrong'
+    judgedDelta: 0 // poin yang benar-benar diterapkan ke tim
   };
 
   state.buzzList.push(buzzRecord);
@@ -254,9 +345,84 @@ function handleBuzz({ id, name, color }) {
   };
 }
 
+// Logika Penilaian Jawaban (BENAR / SALAH / BATAL) — poin diambil dari pengaturan server
+function handleJudge(payload = {}) {
+  const result = payload.result;
+  if (!['correct', 'wrong', 'undo'].includes(result)) {
+    return { success: false, error: 'Jenis penilaian tidak valid' };
+  }
+
+  // Target: peserta antrean sesuai rank, atau peserta teratas yang belum dinilai
+  let buzz = null;
+  if (payload.rank !== undefined && payload.rank !== null) {
+    buzz = state.buzzList.find(b => b.rank === Number(payload.rank)) || null;
+    if (!buzz) return { success: false, error: 'Peserta di antrean tidak ditemukan' };
+  } else if (result !== 'undo') {
+    buzz = state.buzzList.find(b => !b.judged) || null;
+  }
+
+  if (!buzz) {
+    if (result === 'undo') return { success: false, error: 'Tidak ada penilaian untuk dibatalkan' };
+    // Tidak ada peserta yang menunggu penilaian: hanya putar efek suara
+    broadcast({ type: 'PLAY_SOUND', sound: result === 'correct' ? 'truth' : 'lie' });
+    return { success: true, soundOnly: true, state };
+  }
+
+  if (result === 'undo' && !buzz.judged) {
+    return { success: false, error: `${buzz.name} belum dinilai` };
+  }
+  if (result !== 'undo' && buzz.judged === result) {
+    return { success: false, error: `${buzz.name} sudah dinilai ${result === 'correct' ? 'BENAR' : 'SALAH'}` };
+  }
+
+  let team = findTeam({ id: buzz.teamId, name: buzz.name });
+  const previousDelta = team ? buzz.judgedDelta : 0;
+
+  // Batalkan poin penilaian sebelumnya (jika juri mengoreksi / membatalkan)
+  if (team && previousDelta) team.score -= previousDelta;
+
+  if (result === 'undo') {
+    buzz.judged = null;
+    buzz.judgedDelta = 0;
+  } else {
+    const points = result === 'correct' ? state.settings.pointsCorrect : state.settings.pointsWrong;
+    if (!team && points !== 0) {
+      const created = addTeam(buzz.name, buzz.color);
+      // team === null di sini, jadi belum ada poin yang berubah
+      if (created.error) return { success: false, error: created.error };
+      team = created.team;
+    }
+    if (team) {
+      team.score += points;
+      buzz.teamId = team.id;
+    }
+    buzz.judged = result;
+    buzz.judgedDelta = team ? points : 0;
+  }
+
+  const netDelta = buzz.judgedDelta - previousDelta;
+  saveScoreboard();
+  broadcast({
+    type: 'JUDGE',
+    result,
+    buzz,
+    points: buzz.judgedDelta,
+    buzzList: state.buzzList,
+    teams: state.teams,
+    change: team && netDelta ? { id: team.id, delta: netDelta } : null,
+    sound: result === 'correct' ? 'truth' : result === 'wrong' ? 'lie' : null
+  });
+
+  return { success: true, state };
+}
+
 // Logika Pemrosesan Aksi Juri (Control)
 function handleControl(action, payload = {}) {
+  payload = payload && typeof payload === 'object' ? payload : {};
   switch (action) {
+    case 'judge':
+      return handleJudge(payload);
+
     case 'unlock':
       state.status = 'ACTIVE';
       state.buzzList = [];
@@ -340,7 +506,7 @@ function handleControl(action, payload = {}) {
     case 'score': {
       // payload: { id?, name?, color?, delta } — jika tim belum ada & name diberikan, tim dibuat otomatis
       const delta = Number(payload && payload.delta);
-      if (!Number.isFinite(delta) || delta === 0 || Math.abs(delta) > MAX_ABS_DELTA) {
+      if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > MAX_ABS_DELTA) {
         return { success: false, error: 'Nilai poin tidak valid' };
       }
       let team = findTeam(payload || {});
@@ -359,7 +525,7 @@ function handleControl(action, payload = {}) {
       const team = findTeam({ id: payload && payload.id });
       const value = Number(payload && payload.score);
       if (!team) return { success: false, error: 'Tim tidak ditemukan' };
-      if (payload.score === '' || !Number.isFinite(value) || Math.abs(value) > 1000000) {
+      if (payload.score === '' || !Number.isInteger(value) || Math.abs(value) > 1000000) {
         return { success: false, error: 'Nilai skor tidak valid' };
       }
       const delta = value - team.score;
@@ -388,17 +554,20 @@ function handleControl(action, payload = {}) {
       const before = state.teams.length;
       state.teams = state.teams.filter(t => t.id !== (payload && payload.id));
       if (state.teams.length === before) return { success: false, error: 'Tim tidak ditemukan' };
+      clearJudgements(payload.id);
       broadcastScores();
       break;
     }
 
     case 'score-reset':
       state.teams.forEach(t => { t.score = 0; });
+      clearJudgements();
       broadcastScores();
       break;
 
     case 'teams-clear':
       state.teams = [];
+      clearJudgements();
       broadcastScores();
       break;
 
@@ -422,23 +591,43 @@ function handleControl(action, payload = {}) {
 
 // Event Socket.IO
 io.on('connection', (socket) => {
+  const ip = socketIp(socket);
+  socket.data.isHost = false;
+
+  // Juri / proyektor yang sudah login mengirim token sesi saat handshake (socket.auth.token)
+  socket.data.isHost = isValidHostToken(socket.handshake.auth && socket.handshake.auth.token);
+
   // Kirim state awal secara instan saat klien terhubung
   socket.emit('buzzer:event', {
     type: 'STATE_UPDATE',
     state,
     soundTrigger: null
   });
+  socket.emit('auth:status', { isHost: socket.data.isHost });
 
-  // Listener tekan bel via socket
+  // Login juri dengan PIN
+  socket.on('AUTH', (data, callback) => {
+    const result = checkPin(ip, data && typeof data.pin === 'string' ? data.pin : '');
+    socket.data.isHost = result.ok;
+    if (typeof callback === 'function') {
+      callback(result.ok ? { success: true, token: issueHostToken() } : { success: false, error: result.error });
+    }
+  });
+
+  // Listener tekan bel via socket (terbuka untuk peserta)
   socket.on('BUZZ', (data, callback) => {
-    const result = handleBuzz(data);
+    const result = handleBuzz(data && typeof data === 'object' ? data : {});
     if (typeof callback === 'function') callback(result);
   });
 
-  // Listener kontrol juri via socket
-  socket.on('CONTROL', ({ action, payload }, callback) => {
-    const result = handleControl(action, payload);
-    if (typeof callback === 'function') callback(result);
+  // Listener kontrol juri via socket (wajib PIN)
+  socket.on('CONTROL', (data, callback) => {
+    const reply = typeof callback === 'function' ? callback : () => {};
+    if (!socket.data.isHost) {
+      return reply({ success: false, code: 'UNAUTHORIZED', error: 'Akses juri diperlukan. Masukkan PIN juri.' });
+    }
+    const { action, payload } = data && typeof data === 'object' ? data : {};
+    reply(handleControl(action, payload));
   });
 });
 
@@ -502,7 +691,7 @@ app.get('/api/info', async (req, res) => {
 
 // API Buzzer Press (Dukungan REST API)
 app.post('/api/buzz', (req, res) => {
-  const result = handleBuzz(req.body);
+  const result = handleBuzz(req.body && typeof req.body === 'object' ? req.body : {});
   if (!result.success && !result.rank) {
     return res.status(400).json(result);
   }
@@ -511,7 +700,13 @@ app.post('/api/buzz', (req, res) => {
 
 // API Kontrol Host (Dukungan REST API)
 app.post('/api/control', (req, res) => {
-  const { action, payload } = req.body;
+  const auth = isValidHostToken(req.get('x-host-token'))
+    ? { ok: true }
+    : checkPin(req.ip || 'unknown', req.get('x-host-pin') || '');
+  if (!auth.ok) {
+    return res.status(401).json({ success: false, code: 'UNAUTHORIZED', error: auth.error });
+  }
+  const { action, payload } = req.body || {};
   const result = handleControl(action, payload);
   if (!result.success) {
     return res.status(400).json(result);
@@ -530,5 +725,8 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Tampilan Proyektor  : http://${localIp}:${PORT}/projector`);
   console.log(`Cloudflare Tunnel  : Siap (X-Forwarded & CF-Visitor aktif)`);
   console.log(`Socket.IO Realtime  : AKTIF (Port ${PORT})`);
+  console.log(HOST_PIN_FROM_ENV
+    ? 'PIN Juri           : dari env HOST_PIN'
+    : `PIN Juri           : ${HOST_PIN}  (acak — set env HOST_PIN agar tetap)`);
   console.log('====================================================');
 });

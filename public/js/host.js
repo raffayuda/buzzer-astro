@@ -42,7 +42,18 @@ const volumeSlider = document.getElementById('volume-slider');
 // 1. Inisialisasi Koneksi Socket.IO
 function initSocket() {
   if (socket) return;
-  socket = io();
+  socket = io({ auth: { token: window.hostAuth.getToken() } });
+
+  // Status akses juri dikirim server setiap (re)connect
+  socket.on('auth:status', ({ isHost } = {}) => {
+    if (isHost) {
+      hideLoginOverlay();
+    } else {
+      window.hostAuth.clearToken();
+      socket.auth = {};
+      showLoginOverlay();
+    }
+  });
 
   socket.on('connect', () => {
     fetchInfo();
@@ -145,7 +156,28 @@ function handleHostEvent(event) {
 
     case 'SCORE_UPDATE':
       hostState.teams = event.teams || [];
+      if (event.buzzList) {
+        hostState.buzzList = event.buzzList;
+        renderBuzzList(hostState.buzzList);
+      }
       renderTeamList();
+      break;
+
+    case 'JUDGE':
+      hostState.teams = event.teams || [];
+      hostState.buzzList = event.buzzList || [];
+      renderBuzzList(hostState.buzzList);
+      renderTeamList();
+      if (event.sound === 'truth') window.soundEngine.playTruth();
+      else if (event.sound === 'lie') window.soundEngine.playLie();
+      if (event.buzz) {
+        if (event.result === 'undo') {
+          showHostToast(`Penilaian ${event.buzz.name} dibatalkan`, '#64748b');
+        } else {
+          const label = event.result === 'correct' ? 'BENAR' : 'SALAH';
+          showHostToast(`${event.buzz.name}: ${label} ${formatDelta(event.points)} poin`, event.result === 'correct' ? '#059669' : '#e11d48');
+        }
+      }
       break;
   }
 }
@@ -205,6 +237,17 @@ function renderBuzzList(list) {
     div.className = `buzz-item ${isFirst ? 'rank-1' : ''}`;
     const pc = Number(hostState.settings?.pointsCorrect ?? 10);
     const pw = Number(hostState.settings?.pointsWrong ?? -5);
+    if (item.judged) div.classList.add(item.judged === 'correct' ? 'is-judged-correct' : 'is-judged-wrong');
+
+    const actions = item.judged
+      ? `<span class="judge-badge ${item.judged === 'correct' ? 'is-up' : 'is-down'}">
+           ${item.judged === 'correct' ? '✓ BENAR' : '✗ SALAH'} ${formatDelta(item.judgedDelta)}
+         </span>
+         <button type="button" class="btn-quick-score is-muted" data-result="${item.judged === 'correct' ? 'wrong' : 'correct'}" title="Koreksi penilaian">Ubah</button>
+         <button type="button" class="btn-quick-score is-muted" data-result="undo" title="Batalkan penilaian & kembalikan poin">Batal</button>`
+      : `<button type="button" class="btn-quick-score is-up" data-result="correct" title="Jawaban benar">Benar ${formatDelta(pc)}</button>
+         <button type="button" class="btn-quick-score is-down" data-result="wrong" title="Jawaban salah">Salah ${formatDelta(pw)}</button>`;
+
     div.innerHTML = `
       <div class="buzz-rank-badge">#${item.rank}</div>
       <div class="buzz-user-info">
@@ -212,18 +255,11 @@ function renderBuzzList(list) {
         <span class="buzz-user-name">${escapeHtml(item.name)}</span>
       </div>
       <div class="buzz-delta-time">${deltaText}</div>
-      <div class="buzz-score-actions">
-        <button type="button" class="btn-quick-score is-up" data-delta="${pc}" title="Tambah poin jawaban benar">Benar ${formatDelta(pc)}</button>
-        <button type="button" class="btn-quick-score is-down" data-delta="${pw}" title="Poin jawaban salah">Salah ${formatDelta(pw)}</button>
-      </div>
+      <div class="buzz-score-actions">${actions}</div>
     `;
     div.querySelectorAll('.btn-quick-score').forEach(btn => {
       btn.addEventListener('click', () => {
-        const delta = Number(btn.dataset.delta);
-        if (!delta) return;
-        // Cocokkan nama buzz dengan tim di papan skor (dibuat otomatis jika belum ada)
-        sendControl('score', { name: item.name, color: item.color, delta });
-        showHostToast(`${item.name} ${formatDelta(delta)} poin`, delta > 0 ? '#059669' : '#e11d48');
+        sendControl('judge', { rank: item.rank, result: btn.dataset.result });
       });
     });
     buzzListEl.appendChild(div);
@@ -272,34 +308,44 @@ function showHostToast(text, color = 'var(--astro-blue)') {
 }
 
 // 5. Eksekusi Kontrol Host
+const SUCCESS_TOASTS = {
+  reset: ['Antrean Bel Dikosongkan (Reset)', 'linear-gradient(135deg, #f59e0b, #d97706)'],
+  unlock: ['Bel Dibuka (Siap Berebut)', 'linear-gradient(135deg, #10b981, #059669)'],
+  lock: ['Bel Terkunci', 'linear-gradient(135deg, #f43f5e, #e11d48)']
+};
+
+function handleControlResponse(action, payload, res) {
+  if (!res) return;
+  if (res.success === false) {
+    if (res.code === 'UNAUTHORIZED') {
+      window.hostAuth.clearToken();
+      showLoginOverlay(res.error);
+    } else if (res.error) {
+      showHostToast(res.error, '#e11d48');
+    }
+    return;
+  }
+
+  // Toast hanya setelah server mengonfirmasi aksi berhasil
+  if (SUCCESS_TOASTS[action]) {
+    showHostToast(...SUCCESS_TOASTS[action]);
+  } else if (action === 'timer') {
+    showHostToast(`Timer ${(payload && payload.seconds) || 5}s Dimulai`, '#3b82f6');
+  } else if (action === 'judge' && res.soundOnly) {
+    showHostToast('Antrean kosong / sudah dinilai semua — hanya efek suara', '#64748b');
+  }
+
+  if (res.state) {
+    hostState = res.state;
+    renderState();
+  }
+}
+
 async function sendControl(action, payload = {}) {
   window.soundEngine.init();
 
-  // Feedback toast langsung
-  if (action === 'reset') {
-    showHostToast('Antrean Bel Dikosongkan (Reset)', 'linear-gradient(135deg, #f59e0b, #d97706)');
-  } else if (action === 'unlock') {
-    showHostToast('Bel Dibuka (Siap Berebut)', 'linear-gradient(135deg, #10b981, #059669)');
-  } else if (action === 'lock') {
-    showHostToast('Bel Terkunci', 'linear-gradient(135deg, #f43f5e, #e11d48)');
-  } else if (action === 'sound') {
-    if (payload.sound === 'truth') showHostToast('Suara TRUTH (Benar) Diputar', '#059669');
-    else if (payload.sound === 'lie') showHostToast('Suara LIE (Salah) Diputar', '#e11d48');
-  } else if (action === 'timer') {
-    showHostToast(`Timer ${(payload && payload.seconds) || 5}s Dimulai`, '#3b82f6');
-  }
-
   if (socket && socket.connected) {
-    socket.emit('CONTROL', { action, payload }, (res) => {
-      if (res && res.success === false && res.error) {
-        showHostToast(res.error, '#e11d48');
-        return;
-      }
-      if (res && res.state) {
-        hostState = res.state;
-        renderState();
-      }
-    });
+    socket.emit('CONTROL', { action, payload }, (res) => handleControlResponse(action, payload, res));
     return;
   }
 
@@ -307,22 +353,58 @@ async function sendControl(action, payload = {}) {
   try {
     const res = await fetch('/api/control', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-host-token': window.hostAuth.getToken() },
       body: JSON.stringify({ action, payload })
     });
-    const data = await res.json();
-    if (data.success === false && data.error) {
-      showHostToast(data.error, '#e11d48');
-      return;
-    }
-    if (data.state) {
-      hostState = data.state;
-      renderState();
-    }
+    handleControlResponse(action, payload, await res.json());
   } catch (err) {
     console.error('Gagal mengirim perintah host:', err);
     showHostToast('Gagal menghubungi server!', '#e11d48');
   }
+}
+
+// 5b. Overlay Login PIN Juri
+const loginOverlay = document.getElementById('login-overlay');
+const loginForm = document.getElementById('login-form');
+const loginPin = document.getElementById('login-pin');
+const loginError = document.getElementById('login-error');
+const loginSubmit = document.getElementById('login-submit');
+
+function isLoginOverlayOpen() {
+  return Boolean(loginOverlay && loginOverlay.style.display !== 'none');
+}
+
+function showLoginOverlay(message = '') {
+  if (!loginOverlay) return;
+  loginOverlay.style.display = 'flex';
+  if (loginError) loginError.textContent = message;
+  setTimeout(() => loginPin && loginPin.focus(), 50);
+}
+
+function hideLoginOverlay() {
+  if (!loginOverlay) return;
+  loginOverlay.style.display = 'none';
+  if (loginError) loginError.textContent = '';
+  if (loginPin) loginPin.value = '';
+}
+
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pin = loginPin.value.trim();
+    if (!pin) return;
+    loginSubmit.disabled = true;
+    const res = await window.hostAuth.login(socket, pin);
+    loginSubmit.disabled = false;
+    if (res.success) {
+      hideLoginOverlay();
+      showHostToast('Login juri berhasil', '#059669');
+      fetchInfo();
+    } else {
+      loginError.textContent = res.error || 'PIN salah';
+      loginPin.select();
+    }
+  });
 }
 
 // 6. Action Button Listeners
@@ -351,14 +433,14 @@ if (btnLock) {
 if (sfxLie) {
   sfxLie.addEventListener('click', () => {
     triggerBtnVisual(sfxLie);
-    sendControl('sound', { sound: 'lie' });
+    sendControl('judge', { result: 'wrong' });
   });
 }
 
 if (sfxTruth) {
   sfxTruth.addEventListener('click', () => {
     triggerBtnVisual(sfxTruth);
-    sendControl('sound', { sound: 'truth' });
+    sendControl('judge', { result: 'correct' });
   });
 }
 
@@ -406,6 +488,7 @@ function triggerBtnVisual(btn) {
 window.addEventListener('keydown', (e) => {
   // Cegah shortcut jika pengguna sedang fokus pada form input, select, atau textarea
   if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+  if (isLoginOverlayOpen()) return;
 
   if (e.code === 'Space') {
     e.preventDefault();
@@ -422,11 +505,11 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 'l' || e.key === 'L') {
     e.preventDefault();
     triggerBtnVisual(sfxLie);
-    sendControl('sound', { sound: 'lie' });
+    sendControl('judge', { result: 'wrong' });
   } else if (e.key === 't' || e.key === 'T') {
     e.preventDefault();
     triggerBtnVisual(sfxTruth);
-    sendControl('sound', { sound: 'truth' });
+    sendControl('judge', { result: 'correct' });
   } else if (e.key === 'c' || e.key === 'C') {
     e.preventDefault();
     triggerBtnVisual(btnTimer);
@@ -516,11 +599,15 @@ const TEAM_COLORS = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec
 
 function formatDelta(delta) {
   const n = Number(delta) || 0;
-  return `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
+  return `${n > 0 ? '+' : n < 0 ? '−' : '±'}${Math.abs(n)}`;
 }
 
 function renderScoreSettings() {
   const s = hostState.settings || {};
+  const truthPoints = document.getElementById('sfx-truth-points');
+  const liePoints = document.getElementById('sfx-lie-points');
+  if (truthPoints) truthPoints.textContent = formatDelta(s.pointsCorrect ?? 10);
+  if (liePoints) liePoints.textContent = formatDelta(s.pointsWrong ?? -5);
   if (settingShowScoreboard) settingShowScoreboard.checked = s.showScoreboard !== false;
   if (settingPointsCorrect && document.activeElement !== settingPointsCorrect) {
     settingPointsCorrect.value = s.pointsCorrect ?? 10;
@@ -589,7 +676,10 @@ function renderTeamList() {
       e.preventDefault();
       const input = e.currentTarget.querySelector('input');
       const delta = Number(input.value);
-      if (!input.value || !Number.isFinite(delta) || delta === 0) return;
+      if (!input.value || !Number.isInteger(delta) || delta === 0) {
+        showHostToast('Poin harus bilangan bulat selain 0', '#e11d48');
+        return;
+      }
       input.value = '';
       input.blur();
       sendControl('score', { id: team.id, delta });
@@ -645,7 +735,14 @@ if (settingShowScoreboard) {
   if (!input) return;
   input.addEventListener('change', () => {
     const value = Number(input.value);
-    if (!input.value || !Number.isFinite(value)) {
+    const signOk = key === 'pointsCorrect' ? value >= 0 : value <= 0;
+    if (input.value === '' || !Number.isInteger(value) || !signOk || Math.abs(value) > 10000) {
+      showHostToast(
+        key === 'pointsCorrect'
+          ? 'Poin benar harus bilangan bulat 0 s/d 10000'
+          : 'Poin salah harus bilangan bulat 0 s/d -10000 (0 = tanpa pengurangan)',
+        '#e11d48'
+      );
       renderScoreSettings();
       return;
     }

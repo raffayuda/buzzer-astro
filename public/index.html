@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Buzzer Lomba - Peserta | ASTRO 2026</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=11">
 </head>
 <body>
   <!-- Frutiger Aero Floating Bubbles Background -->
@@ -39,23 +39,30 @@
       
       <div class="window-body">
         <h2>Masuk ke Pertandingan</h2>
-        <p>Masukkan nama Anda untuk bergabung ke arena bel lomba</p>
+        <p id="reg-subtitle">Masukkan nama Anda untuk bergabung ke arena bel lomba</p>
+
+        <div id="reg-notice" class="reg-notice" role="alert" style="display: none;"></div>
 
         <form id="join-form">
-          <div class="form-group">
+          <div id="team-picker-group" class="form-group" style="display: none;">
+            <label class="form-label">Pilih Tim Anda</label>
+            <div id="team-picker" class="team-picker"></div>
+          </div>
+
+          <div id="free-name-group" class="form-group">
             <label class="form-label" for="player-name">Nama Peserta</label>
             <input 
               type="text" 
               id="player-name" 
               class="form-input" 
               placeholder="Contoh: Budi Santoso" 
-              maxlength="25" 
+              maxlength="40" 
               required
               autocomplete="off"
             >
           </div>
 
-          <div class="form-group">
+          <div id="color-group" class="form-group">
             <label class="form-label">Warna Penanda Peserta</label>
             <div class="color-options">
               <button type="button" class="color-btn selected" data-color="#ef4444" style="background-color: #ef4444;" title="Merah"></button>
@@ -88,6 +95,7 @@
         <div class="user-profile-bar">
           <span id="profile-indicator" class="participant-indicator team-indicator"></span>
           <span id="profile-name" class="user-display-name">-</span>
+          <span id="profile-score" class="profile-score" style="display: none;">0 poin</span>
           <button id="btn-change-name" style="background:none; border:none; color:var(--astro-blue); font-family:var(--font-heading); font-weight:700; font-size:0.8rem; cursor:pointer; text-decoration:underline;">Ganti</button>
         </div>
 
@@ -95,6 +103,9 @@
         <div id="status-text" class="game-status-text status-txt-locked">
           MENUNGGU SOAL
         </div>
+
+        <!-- Notifikasi Penilaian Juri (BENAR / SALAH) -->
+        <div id="verdict-banner" class="verdict-banner" role="status" aria-live="polite" style="display: none;"></div>
 
         <!-- Tombol Buzzer Tactile 3D Dome -->
         <div class="buzzer-stage">
@@ -117,6 +128,33 @@
 
       </div>
     </section>
+
+    <!-- Papan Skor Live (WindowCard) -->
+    <section id="score-section" class="window-card info-card" style="display: none;">
+      <div class="window-titlebar">
+        <div class="window-dot-group">
+          <span class="window-close-dot"></span>
+          <span class="window-title">PAPAN SKOR</span>
+        </div>
+        <span class="astro-pill pill-white" style="font-size: 0.65rem; padding: 0.2rem 0.6rem;">LIVE</span>
+      </div>
+      <div class="window-body">
+        <div id="participant-scoreboard" class="p-score-list"></div>
+      </div>
+    </section>
+
+    <!-- Aturan Poin & Pertandingan (WindowCard) -->
+    <section id="rules-section" class="window-card info-card" style="display: none;">
+      <div class="window-titlebar">
+        <div class="window-dot-group">
+          <span class="window-close-dot"></span>
+          <span class="window-title">ATURAN PERTANDINGAN</span>
+        </div>
+      </div>
+      <div class="window-body">
+        <ul id="rules-list" class="rules-list"></ul>
+      </div>
+    </section>
   </main>
 
   <!-- Grounding Curved Grass Strip Frutiger Aero -->
@@ -124,6 +162,6 @@
 
   <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/client.js?v=9"></script>
+  <script src="/js/client.js?v=11"></script>
 </body>
 </html>

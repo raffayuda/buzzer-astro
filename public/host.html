@@ -4,9 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Panel Juri - Buzzer Lomba | ASTRO 2026</title>
-  <link rel="stylesheet" href="/css/style.css?v=10">
+  <link rel="stylesheet" href="/css/style.css?v=11">
 </head>
 <body>
+  <!-- Overlay Login PIN Juri -->
+  <div id="login-overlay" class="login-overlay" style="display: none;">
+    <form id="login-form" class="window-card login-card" autocomplete="off">
+      <div class="window-titlebar">
+        <div class="window-dot-group">
+          <span class="window-close-dot"></span>
+          <span class="window-title">AKSES JURI</span>
+        </div>
+      </div>
+      <div class="window-body login-body">
+        <h2>Masukkan PIN Juri</h2>
+        <p>Panel ini hanya untuk juri/panitia. PIN tertera di log server (atau env <code>HOST_PIN</code>).</p>
+        <input type="password" id="login-pin" class="form-input" inputmode="numeric" placeholder="PIN juri" maxlength="64" required>
+        <div id="login-error" class="login-error" role="alert"></div>
+        <button type="submit" id="login-submit" class="cta-button">Masuk Panel Juri</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Frutiger Aero Floating Bubbles Background -->
   <div class="bubble-decor bubble-1"></div>
   <div class="bubble-decor bubble-4"></div>
@@ -55,8 +74,8 @@
             <span class="astro-pill pill-white"><kbd style="background:#e2e8f0; padding:1px 5px; border-radius:4px; color:#1e3a8a; margin-right:4px;">Enter</kbd> Reset</span>
             <span class="astro-pill pill-white"><kbd style="background:#fee2e2; padding:1px 5px; border-radius:4px; color:#b91c1c; margin-right:4px;">R</kbd> Reset Ronde</span>
             <span class="astro-pill pill-white"><kbd style="background:#e2e8f0; padding:1px 5px; border-radius:4px; color:#1e3a8a; margin-right:4px;">K</kbd> Kunci</span>
-            <span class="astro-pill pill-white"><kbd style="background:#fee2e2; padding:1px 5px; border-radius:4px; color:#b91c1c; margin-right:4px;">L</kbd> Lie</span>
-            <span class="astro-pill pill-white"><kbd style="background:#dcfce7; padding:1px 5px; border-radius:4px; color:#15803d; margin-right:4px;">T</kbd> Truth</span>
+            <span class="astro-pill pill-white"><kbd style="background:#fee2e2; padding:1px 5px; border-radius:4px; color:#b91c1c; margin-right:4px;">L</kbd> Salah</span>
+            <span class="astro-pill pill-white"><kbd style="background:#dcfce7; padding:1px 5px; border-radius:4px; color:#15803d; margin-right:4px;">T</kbd> Benar</span>
           </div>
         </div>
 
@@ -81,14 +100,15 @@
         <!-- Soundboard Row -->
         <div>
           <div style="font-family: var(--font-subtitle); font-size: 0.75rem; font-weight: 800; color: var(--astro-navy); margin-bottom: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em;">
-            Pemicu Suara (Truth / Lie) & Timer Hitung Mundur
+            Penilaian Jawaban & Timer Hitung Mundur
           </div>
+          <p class="judge-hint">BENAR / SALAH menilai peserta teratas di antrean yang belum dinilai, memberi poin otomatis &amp; memutar suara. Jika antrean kosong, hanya suara yang diputar.</p>
           <div class="sound-board-grid">
             <button id="sfx-truth" class="btn-sfx btn-sfx-truth">
-              TRUTH (BENAR) [T]
+              BENAR (<span id="sfx-truth-points">+10</span>) [T]
             </button>
             <button id="sfx-lie" class="btn-sfx btn-sfx-lie">
-              LIE (SALAH) [L]
+              SALAH (<span id="sfx-lie-points">−5</span>) [L]
             </button>
             <button id="btn-timer" class="btn-sfx btn-sfx-timer">
               Hitung Mundur (<span id="timer-display-btn">5s</span>) [C]
@@ -130,7 +150,7 @@
             </div>
             <label class="astro-pill pill-white score-toggle" title="Tampilkan / sembunyikan papan skor di layar proyektor [S di proyektor]">
               <input type="checkbox" id="setting-show-scoreboard" checked>
-              <span>Tampil di Proyektor</span>
+              <span>Tampilkan Skor (Proyektor &amp; HP)</span>
             </label>
           </div>
 
@@ -144,11 +164,11 @@
             <div class="score-settings-row">
               <label class="score-setting">
                 <span>Poin Benar</span>
-                <input type="number" id="setting-points-correct" class="form-input" value="10" step="1">
+                <input type="number" id="setting-points-correct" class="form-input" value="10" step="1" min="0" max="10000" title="Bilangan bulat ≥ 0">
               </label>
               <label class="score-setting">
                 <span>Poin Salah</span>
-                <input type="number" id="setting-points-wrong" class="form-input" value="-5" step="1">
+                <input type="number" id="setting-points-wrong" class="form-input" value="-5" step="1" min="-10000" max="0" title="Bilangan bulat ≤ 0 (0 = tanpa pengurangan)">
               </label>
               <div class="score-settings-actions">
                 <button type="button" id="btn-score-reset" class="btn-score-muted">Nolkan Semua Skor</button>
@@ -241,6 +261,7 @@
   <!-- Scripts -->
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/sound.js?v=9"></script>
-  <script src="/js/host.js?v=10"></script>
+  <script src="/js/host-auth.js?v=11"></script>
+  <script src="/js/host.js?v=11"></script>
 </body>
 </html>
